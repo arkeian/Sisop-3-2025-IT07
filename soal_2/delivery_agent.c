@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <time.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <unistd.h>
+#include <pthread.h>
 
 #define SHM_KEY 1234
 #define MAX_ORDERS 100
@@ -30,86 +31,79 @@ typedef struct {
 typedef struct {
     Order orders[MAX_ORDERS];
     int count;
-    int rr_counter; // round-robin counter
 } SharedData;
+
+SharedData *data;
 
 void write_log(const char *agent, const char *name, const char *address) {
     FILE *log = fopen("delivery.log", "a");
     time_t now = time(NULL);
     struct tm *t = localtime(&now);
-    fprintf(log, "[%02d/%02d/%04d %02d:%02d:%02d] [AGENT %s] Reguler package delivered to %s in %s\n",
+    fprintf(log, "[%02d/%02d/%04d %02d:%02d:%02d] [%s] Express package delivered to %s in %s\n",
             t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
             t->tm_hour, t->tm_min, t->tm_sec,
             agent, name, address);
     fclose(log);
 }
 
-const char* get_next_agent(int counter) {
-    switch (counter % 3) {
-        case 0: return "A";
-        case 1: return "B";
-        case 2: return "C";
-        default: return "Unknown";
+void *agent_thread(void *arg) {
+    char *agent = (char *)arg;
+    while (1) {
+        for (int i = 0; i < data->count; ++i) {
+            if (data->orders[i].type == EXPRESS && data->orders[i].status == PENDING) {
+                data->orders[i].status = DELIVERED;
+                strcpy(data->orders[i].agent, agent);
+                write_log(agent, data->orders[i].name, data->orders[i].address);
+                sleep(1); // Simulasi waktu pengantaran
+            }
+        }
+        sleep(2); // Cek ulang setiap 2 detik
     }
+    return NULL;
 }
 
-int main(int argc, char *argv[]) {
-    if (argc < 2) {
-        printf("Usage:\n  ./dispatcher -deliver [Nama]\n  ./dispatcher -status [Nama]\n  ./dispatcher -list\n");
-        return 1;
-    }
+int main() {
+    int shmid = shmget(SHM_KEY, sizeof(SharedData), IPC_CREAT | IPC_EXCL | 0666);
+    if (shmid >= 0) {
+        printf("Inisialisasi shared memory dan baca CSV...\n");
+        data = (SharedData *)shmat(shmid, NULL, 0);
 
-    int shmid = shmget(SHM_KEY, sizeof(SharedData), 0666);
-    if (shmid < 0) {
-        perror("Shared memory not found");
-        return 1;
-    }
-    SharedData *data = (SharedData *)shmat(shmid, NULL, 0);
+        FILE *file = fopen("delivery_order.csv", "r");
+        if (!file) {
+            perror("Gagal membuka delivery_order.csv");
+            return 1;
+        }
 
-    if (strcmp(argv[1], "-deliver") == 0 && argc == 3) {
-        char *name = argv[2];
-        for (int i = 0; i < data->count; i++) {
-            if (strcmp(data->orders[i].name, name) == 0 &&
-                data->orders[i].type == REGULER &&
-                data->orders[i].status == PENDING) {
+        char line[256];
+        data->count = 0;
+        while (fgets(line, sizeof(line), file)) {
+            char *name = strtok(line, ",");
+            char *address = strtok(NULL, ",");
+            char *type = strtok(NULL, "\n");
 
-                data->orders[i].status = DELIVERED;
-
-                const char *agent_letter = get_next_agent(data->rr_counter);
-                snprintf(data->orders[i].agent, sizeof(data->orders[i].agent), "Agent %s", agent_letter);
-                data->rr_counter++;
-
-                write_log(agent_letter, data->orders[i].name, data->orders[i].address);
-                printf("Order %s delivered.\n", name);
-                return 0;
+            if (name && address && type && data->count < MAX_ORDERS) {
+                Order *o = &data->orders[data->count++];
+                strncpy(o->name, name, sizeof(o->name));
+                strncpy(o->address, address, sizeof(o->address));
+                o->type = (strcmp(type, "Express") == 0) ? EXPRESS : REGULER;
+                o->status = PENDING;
+                strcpy(o->agent, "-");
             }
         }
-        printf("Order not found or already delivered.\n");
-
-    } else if (strcmp(argv[1], "-status") == 0 && argc == 3) {
-        char *name = argv[2];
-        for (int i = 0; i < data->count; i++) {
-            if (strcmp(data->orders[i].name, name) == 0) {
-                if (data->orders[i].status == DELIVERED) {
-                    printf("Status for %s: Delivered by %s\n", name, data->orders[i].agent);
-                } else {
-                    printf("Status for %s: Pending\n", name);
-                }
-                return 0;
-            }
-        }
-        printf("Order not found.\n");
-
-    } else if (strcmp(argv[1], "-list") == 0) {
-        for (int i = 0; i < data->count; i++) {
-            printf("%s - %s\n", data->orders[i].name,
-                   data->orders[i].status == DELIVERED ? "Delivered" : "Pending");
-        }
-
+        fclose(file);
     } else {
-        printf("Invalid command.\n");
+        shmid = shmget(SHM_KEY, sizeof(SharedData), 0666);
+        data = (SharedData *)shmat(shmid, NULL, 0);
     }
+
+    pthread_t t1, t2, t3;
+    pthread_create(&t1, NULL, agent_thread, "AGENT A");
+    pthread_create(&t2, NULL, agent_thread, "AGENT B");
+    pthread_create(&t3, NULL, agent_thread, "AGENT C");
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+    pthread_join(t3, NULL);
 
     return 0;
 }
-
