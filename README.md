@@ -1,5 +1,13 @@
-# Sisop-3-2025-IT07
+# Laporan Resmi Modul 3 Kelompok IT-07
+## Anggota
 
+| Nama 				| NRP		|
+|-------------------------------|---------------|
+| Muhammad Rakha Hananditya R.	| 5027241015 	|
+| Zaenal Mustofa		| 5027241018 	|
+| Mochkamad Maulana Syafaat	| 5027241021 	|
+
+## • Soal  1
 
 ## • Soal 2
 ### • Pendahuluan
@@ -230,4 +238,6 @@ int main(int argc, char *argv[]) {
 
 ```
 
+## • Soal  3
 
+## • Soal  4
