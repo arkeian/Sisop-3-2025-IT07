@@ -240,4 +240,83 @@ int main(int argc, char *argv[]) {
 
 ## • Soal  3
 
-## • Soal  4
+## • Soal  4: Hunters System
+### • Pendahuluan
+Soal 4 terdiri dari dua program yaitu `hunter.c` dan `system.c` yang berbagi data antara satu dengan yang lainnya menggunakan mekanisme shared memory. Soal ini terdiri dari dua belas subsoal dimana sebelas subsoal pertama kita diperintahkan untuk menambahkan fitur pada sistem tracking hunter tersebut, sedangkan subsoal terakhir memerintahkan kita untuk membuat agar data pada shared memory tidak mengalami kebocoran. Adapun program `hunter` dan `system` menggunakan header file `shm_common.h` dalam pengoperasiannya untuk dapat berjalan, dimana tampilannya adalah sebagai berikut:
+
+```c
+#ifndef SHM_COMMON_H
+#define SHM_COMMON_H
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <sys/stat.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <unistd.h>
+#include <time.h>
+#include <pthread.h>
+
+#define MAX_HUNTERS 50
+#define MAX_DUNGEONS 50
+
+struct Hunter {
+    char username[50];
+    int level;
+    int exp;
+    int atk;
+    int hp;
+    int def;
+    int banned;
+    key_t shm_key;
+};
+
+struct Dungeon {
+    char name[50];
+    int min_level;
+    int exp;
+    int atk;
+    int hp;
+    int def;
+    key_t shm_key;
+};
+
+struct SystemData {
+    struct Hunter hunters[MAX_HUNTERS];
+    int num_hunters;
+    struct Dungeon dungeons[MAX_DUNGEONS];
+    int num_dungeons;
+    int current_notification_index;
+};
+
+key_t get_system_key() {
+    return ftok("/tmp", 'S');
+}
+
+#endif
+```
+
+Dimana penjelasan untuk setiap preprocessor yang secara spesifik digunakan pada program `hunter` dan `system`:
+
+```c
+#include <stdio.h>
+```
+1. Menyediakan elemen dari standard I/O yang berkaitan dengan fungsi menampilkan error menggunakan stderr, menampilkan output ke terminal menggunakan stdout, dan memanipulasi file. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<stdio.h>` adalah: `fprintf()`, macro `stderr`, macro `stdout`, struct `FILE`, `fopen()`, `snprintf()`, `fclose()`, `getchar()`, dan `scanf()`.
+```c
+#include <stdlib.h>
+```
+2. Menyediakan elemen dari standard library yang berkaitan dengan fungsi konversi tipe data dan manajemen control process. Adapun elemen yang digunakan program `hunter` dan `system` yang berkaitan dengan file header `<stdlib.h>` adalah: `exit()`, macro `EXIT_FAILURE`, macro `EXIT_SUCCESS`, `rand()`, dan `srand()`.
+
+```c
+```c
+#include <string.h>
+```
+3. Menyediakan elemen yang berkaitan dengan fungsi memanipulasi tipe data `string`. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<string.h>` adalah: `strcmp()`, `strncpy()`, dan `memcpy()`.
+
+```c
+```c
+#include <sys/ipc.h>
+```
+4. Menyediakan elemen yang berkaitan dengan interprocess communication atau IPC. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<sys/ipc.h>` adalah: `ftok()`.
