@@ -237,6 +237,95 @@ int main(int argc, char *argv[]) {
 }
 
 ```
+# delivery_agent
+Program ini bertugas melakukan pengiriman otomatis untuk pesanan bertipe Express menggunakan multi-threading. Program ini juga dapat membaca file.csv dan menyimpannya ke shared memory. Berikut ini penjelasan kode nya :
+```c
+typedef enum {
+    EXPRESS,
+    REGULER
+} OrderType;
+
+typedef enum {
+    PENDING,
+    DELIVERED
+} OrderStatus;
+
+typedef struct {
+    char name[64];
+    char address[128];
+    OrderType type;
+    OrderStatus status;
+    char agent[64];
+} Order;
+
+typedef struct {
+    Order orders[MAX_ORDERS];
+    int count;
+} SharedData;
+
+```
+Bagian ini mendefinisikan tipe data enumerasi dan struktur untuk merepresentasikan informasi pesanan dalam sistem. Tipe enum OrderType digunakan untuk membedakan jenis pesanan, yaitu EXPRESS untuk pengiriman cepat dan REGULER untuk pengiriman biasa, sedangkan OrderStatus menunjukkan status pengiriman dengan nilai PENDING atau DELIVERED. Struct Order menyimpan data lengkap untuk satu pesanan, seperti nama penerima, alamat tujuan, tipe dan status pesanan, serta nama agen pengantar. Semua pesanan disimpan dalam struct SharedData yang memuat array orders dan variabel count sebagai penghitung jumlah pesanan yang aktif. Pointer global SharedData *data digunakan untuk mengakses shared memory yang berisi seluruh data pesanan, sehingga dapat diakses bersama oleh beberapa thread atau program.
+```c
+void write_log(const char *agent, const char *name, const char *address) {
+    FILE *log = fopen("delivery.log", "a");
+    ...
+    fprintf(log, "[%02d/%02d/%04d %02d:%02d:%02d] [%s] Express package delivered to %s in %s\n", ...)
+    ...
+    fclose(log);
+}
+```
+Membuka file log delivery.log dalam mode append, mencatat informasi waktu, nama agen, penerima, dan alamat, lalu menutup file.
+```c
+void *agent_thread(void *arg) {
+    char *agent = (char *)arg;
+    while (1) {
+        for (int i = 0; i < data->count; ++i) {
+            if (data->orders[i].type == EXPRESS && data->orders[i].status == PENDING) {
+                ...
+            }
+        }
+        sleep(2);
+    }
+    return NULL;
+}
+```
+Fungsi `agent_thread` bertugas menjalankan proses pengantaran untuk pesanan dengan tipe `EXPRESS` secara terus-menerus dalam thread yang berbeda. Argumen yang diterima adalah nama agen, seperti `"AGENT A"`, yang kemudian digunakan untuk menandai pesanan yang berhasil diantar. Di dalam perulangan `while(1)`, thread akan memindai seluruh array pesanan yang ada di shared memory. Jika ditemukan pesanan dengan tipe `EXPRESS` dan status masih `PENDING`, maka status pesanan akan diubah menjadi `DELIVERED`, nama agen akan dicatat dalam entri pesanan, dan informasi pengiriman akan ditulis ke dalam file log menggunakan fungsi `write_log`. Setelah mengantar satu pesanan, thread melakukan `sleep(1)` sebagai simulasi waktu pengiriman sebelum melanjutkan pemeriksaan berikutnya. Setelah seluruh pesanan discan, thread akan tidur selama dua detik (`sleep(2)`) sebelum mengulangi proses pemindaian, memberikan jeda agar tidak membebani CPU.
+```c
+int shmid = shmget(SHM_KEY, sizeof(SharedData), IPC_CREAT | IPC_EXCL | 0666);
+data = (SharedData *)shmat(shmid, NULL, 0);
+FILE *file = fopen("delivery_order.csv", "r");
+while (fgets(line, sizeof(line), file)) {
+    char *name = strtok(line, ",");
+    char *address = strtok(NULL, ",");
+    char *type = strtok(NULL, "\n");
+
+    if (...) {
+        Order *o = &data->orders[data->count++];
+        strncpy(...);
+        o->type = (strcmp(type, "Express") == 0) ? EXPRESS : REGULER;
+        o->status = PENDING;
+        strcpy(o->agent, "-");
+    }
+}
+else {
+    shmid = shmget(SHM_KEY, sizeof(SharedData), 0666);
+    data = (SharedData *)shmat(shmid, NULL, 0);
+}
+
+```
+Pada bagian ini, program akan membuka file `delivery_order.csv` yang berisi daftar pesanan yang perlu dimuat ke dalam shared memory. File dibuka dalam mode baca (`"r"`), dan setiap baris dibaca satu per satu menggunakan `fgets`. Untuk setiap baris, data akan dipecah berdasarkan tanda koma menggunakan fungsi `strtok`, menghasilkan tiga bagian utama yaitu `name` (nama penerima), `address` (alamat tujuan), dan `type` (jenis pengiriman). Apabila ketiganya valid dan jumlah pesanan belum melebihi batas maksimum (`MAX_ORDERS`), maka program akan mengisi elemen berikutnya dalam array `orders` yang ada di shared memory. Nama, alamat, dan tipe order disalin ke dalam struktur `Order`, kemudian status pesanan diatur sebagai `PENDING`, menandakan bahwa pesanan belum dikirim, dan nama agen diisi dengan tanda `"-"` sebagai placeholder sebelum ditugaskan agen pengantar. Apabila file tidak bisa dibuka karena shared memory sudah diinisialisasi sebelumnya oleh proses lain, maka program akan langsung mengakses shared memory yang telah ada menggunakan `shmget` dan `shmat`. Bagian ini memastikan bahwa semua proses dispatcher dan agen memiliki akses konsisten ke data pesanan yang sama.
+```c
+pthread_t t1, t2, t3;
+pthread_create(&t1, NULL, agent_thread, "AGENT A");
+pthread_create(&t2, NULL, agent_thread, "AGENT B");
+pthread_create(&t3, NULL, agent_thread, "AGENT C");
+
+pthread_join(t1, NULL);
+pthread_join(t2, NULL);
+pthread_join(t3, NULL);
+```
+Pada bagian ini, program membuat tiga thread menggunakan `pthread_create`, yang masing-masing dijalankan sebagai agen pengantar dengan nama "AGENT A", "AGENT B", dan "AGENT C". Ketiga agen ini akan bekerja secara paralel untuk memantau shared memory dan mengeksekusi pengiriman pesanan bertipe *Express* secara otomatis. Fungsi `agent_thread` akan dijalankan oleh setiap thread dan terus menerus mengecek apakah ada pesanan bertipe *Express* yang masih berstatus *PENDING*. Jika ditemukan, pesanan tersebut akan ditandai sebagai *DELIVERED*, nama agen dicatat, dan pengiriman akan dilog-kan ke dalam file `delivery.log`. Setelah semua thread dibuat, fungsi `pthread_join` digunakan untuk menunggu setiap thread menyelesaikan tugasnya. Karena setiap agen berjalan dalam loop tak hingga, `pthread_join` ini juga memastikan agar proses utama tidak langsung keluar dan tetap menunggu agen-agen tersebut aktif selama program berjalan.
+
 
 ## • Soal  3
 
