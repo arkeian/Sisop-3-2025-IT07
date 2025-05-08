@@ -871,7 +871,7 @@ if (numh > MAX_HUNTERS - 1) {
 	return;
 }
 ```
-7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program `regist_the_hunters()` akan selesai dan kembali ke UI menu utama pada function `main()` setelah meng-detach segmen shared memory dengan menggunakan function `shmdt()` dan memberikan jeda tiga detik agar user dapat membaca tampilan kendala batas limit.
+7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program `regist_the_hunters()` akan selesai dan kembali ke UI menu utama pada function `main()` setelah meng-detach segmen shared memory utama dengan menggunakan function `shmdt()` dan memberikan jeda tiga detik agar user dapat membaca tampilan kendala batas limit.
 
 ```c
 char username[50];
@@ -895,15 +895,83 @@ for (int i = 0; i < numh; i++) {
 	}
 }
 ```
-10. Memastikan bahwa nama username yang dipilih saat registrasi belum pernah dipakai sebelumnya oleh hunter lain. Apabila username pernah dipakai, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user, meng-detach segmen shared memory dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
+10. Memastikan bahwa nama username yang dipilih saat registrasi belum pernah dipakai sebelumnya oleh hunter lain. Apabila username pernah dipakai, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
 
 ```c
 struct Hunter *hunt = &sys->hunters[numh];
 strncpy(hunt->username, username, sizeof(hunt->username));
 ```
-11. Jika username belum pernah dipakai sebelumnya, maka program akan membuat struktur Hunter untuk hunter baru tersebut sesuai dengan urutan nomor hunter baru tersebut mendaftar dan menyimpan data usernamenya ke dalam struktur tersebut.
+11. Jika username belum pernah dipakai sebelumnya, maka program akan membuat struktur Hunter lokal yang tidak terhubung ke segmen shared memory untuk hunter baru tersebut sesuai dengan urutan nomor hunter baru tersebut mendaftar dan menyimpan data usernamenya ke dalam struktur tersebut.
 
 ```c
 hunt->level = 1; hunt->exp = 0; hunt->atk = 10; hunt->hp = 100; hunt->def = 5; hunt->banned = 0;
 ```
-12. Menginisialisasi value status hunter baru ke value default yang telah ditentukan oleh sistem.
+12. Menginisialisasi value status hunter baru ke value default yang telah ditentukan.
+
+```c
+key_t hkey;
+int hshmid;
+struct Hunter *huntshm;
+```
+13. Mendeklarasikan variabel, dimana:
+- `hkey`: untuk menyimpan data key hunter baru yang hendak registrasi.
+- `hshmid`: untuk menyimpan data mengenai ID segmen shared memory khusus yang digunakan untuk hunter baru yang hendak registrasi.
+- `huntshm`: struktur Hunter yang terhubung pada segmen shared memory khusus untuk hunter baru yang hendak registrasi.
+
+```c
+if ((hkey = ftok("/tmp/hunter", numh)) == -1) {
+        fprintf(stderr, "Error: Fail to create hunter's key\n");
+        shmdt(sys);
+        exit(EXIT_FAILURE);
+}
+```
+14. Mendapatkan value dari variabel hkey yang diambil dari function `ftok()` terhadap pathname `/tmp/hunter`. Apabila gagal untuk mendapatkan hkey-nya, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+hunt->shm_key = hkey;
+```
+15. Menginisialisasi value variabel `shm_key` dengan hkey yang didapat dari function `ftok()`.
+
+```c
+if ((hshmid = shmget(hkey, sizeof(struct Hunter), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to create unique shared memory for each hunter\n");
+        shmdt(sys);
+        exit(EXIT_FAILURE);
+}
+```
+16. Function `shmget()` membuat segmen shared memory dengan key yang telah dibuat dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `hshmid`. Jika segmen shared memory dengan key tersebut belum ada, maka akan dibuat segmen shared memory yang baru menggunakan `IPC_CREAT` dengan izin read-write untuk semua user. Jika segmen sudah ada, maka function hanya perlu mengambil ID segmen shared memory yang sudah dibuat sebelumnya. Terakhir, apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach hunter's shared memory\n");
+        shmdt(sys);
+        exit(EXIT_FAILURE);
+}
+```
+17. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+memcpy(huntshm, hunt, sizeof(struct Hunter));
+```
+18. Menyalin data yang ada pada struktur Hunter lokal ke struktur Hunter yang terhubung ke segmen shared memory khusus untuk hunter baru yang hendak registrasi.
+
+```c
+shmdt(huntshm);
+```
+19. Meng-detach segmen shared memory khusus untuk hunter yang hendak registrasi dengan menggunakan function `shmdt()`.
+
+```c
+sys->num_hunters++;
+```
+20. Menambah tally banyaknya individual hunter yang teregistrasi atau terdaftar di dalam sistem.
+
+```c
+shmdt(sys);
+```
+21. Meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+fprintf(stdout, "Registration success!\n");
+sleep(3);
+```
+22. Mengoutput suatu validasi ke user bahwa program registrasi berhasil berjalan dan user telah diregistrasi atau didaftarkan ke dalam sistem. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
