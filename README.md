@@ -320,3 +320,57 @@ Dimana penjelasan untuk setiap preprocessor yang secara spesifik digunakan pada 
 #include <sys/ipc.h>
 ```
 4. Menyediakan elemen yang berkaitan dengan interprocess communication atau IPC. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<sys/ipc.h>` adalah: `ftok()`.
+```c
+#include <sys/shm.h>
+```
+5. Menyediakan elemen yang berkaitan dengan proses pertukaran data menggunakan shared memory. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<sys/ipc.h>` adalah: `shmget()`, `shmat()`, `shmdt()`, dan `shmctl()`.
+```c
+#include <unistd.h>
+```
+6. Menyediakan elemen dari standard UNIX yang berkaitan dengan fungsi berinteraksi langsung dengan operating system. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<unistd.h>` adalah: `sleep()`.
+```c
+#define MAX_HUNTERS 50
+#define MAX_DUNGEONS 50
+```
+7. Mendefinisikan macros `MAX_HUNTERS` dan `MAX_DUNGEONS` yang merepresentasikan limit banyaknya individual dungeon dan hunters pada sistem.
+```c
+struct Hunter {
+    char username[50];
+    int level;
+    int exp;
+    int atk;
+    int hp;
+    int def;
+    int banned;
+    key_t shm_key;
+};
+```
+8. Mendeklarasikan struktur Hunter beserta data yang berkaitan dengannya seperti status level, exp, attack, hitpoints, defense, dan key khusus untuk mengakses data hunter di shared memory yang spesifik untuk hunter tersebut. Selain itu, struktur Hunter juga menyimpan status apakah suatu hunter diblokir oleh sistem atau tidak.
+```c
+struct Dungeon {
+    char name[50];
+    int min_level;
+    int exp;
+    int atk;
+    int hp;
+    int def;
+    key_t shm_key;
+};
+```
+9. Mendeklarasikan struktur Dungeon beserta data yang berkaitan dengannya seperti status level, exp, attack, hitpoints, defense, dan key khusus untuk mengakses data dungeon di shared memory yang spesifik untuk dungeon tersebut.
+```c
+struct SystemData {
+    struct Hunter hunters[MAX_HUNTERS];
+    int num_hunters;
+    struct Dungeon dungeons[MAX_DUNGEONS];
+    int num_dungeons;
+    int current_notification_index;
+};
+```
+10. Mendeklarasikan struktur SystemData beserta data yang berkaitan dengannya seperti array yang berisi data semua hunter dan dungeon yang terdaftar dalam sistem, jumlah hunter dan dungeon yang terdapat pada sistem, serta indeks untuk menyimpan data mengenai sistem kendali notifikasi setiap hunter.
+```c
+key_t get_system_key() {
+    return ftok("/tmp", 'S');
+}
+```
+11. Merupakan function untuk membuat kunci sistem yang digunakan dalam proses pertukaran data menggunakan shared memory.
