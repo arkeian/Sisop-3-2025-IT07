@@ -871,7 +871,7 @@ if (numh > MAX_HUNTERS - 1) {
 	return;
 }
 ```
-7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program `regist_the_hunters()` akan selesai dan kembali ke UI menu utama pada function `main()` setelah meng-detach segmen shared memory utama dengan menggunakan function `shmdt()` dan memberikan jeda tiga detik agar user dapat membaca tampilan kendala batas limit.
+7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program akan kembali ke halaman utama program `hunter` setelah melempar sebuah pesan ke stdout yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca pesan tersebut.
 
 ```c
 char username[50];
@@ -974,4 +974,181 @@ shmdt(sys);
 fprintf(stdout, "Registration success!\n");
 sleep(3);
 ```
-22. Mengoutput suatu validasi ke user bahwa program registrasi berhasil berjalan dan user telah diregistrasi atau didaftarkan ke dalam sistem. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
+22. Mengoutput suatu pesan ke user bahwa program registrasi berhasil berjalan dan user telah diregistrasi atau didaftarkan ke dalam sistem. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
+
+#### a. Soal 4.B.2: `login_registered_hunters()`
+
+Function `login_registered_hunters()` memiliki tugas utama yaitu melakukan proses login untuk hunter lama. Adapun tampilan function `login_registered_hunters()` adalah sebagai berikut:
+
+```c
+void login_registered_hunters() {
+    key_t key;
+    int shmid;
+    
+    if ((key = get_system_key()) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory key\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach to shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    char username[50];
+    fprintf(stdout, "Username: ");
+    scanf("%49s", username);
+    while (getchar() != '\n');
+
+    int hshmid;
+    for (int i = 0; i < sys->num_hunters; i++) {
+        struct Hunter *hunt = &sys->hunters[i];
+        if (!strcmp(username, hunt->username)) {
+            if ((hshmid = shmget(hunt->shm_key, sizeof(struct Hunter), 0666)) == -1) {
+                fprintf(stderr, "Error: Fail to get shared memory for the selected hunter\n");
+                shmdt(sys);
+                exit(EXIT_FAILURE);
+            }
+        
+            struct Hunter *huntshm;
+            if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+                fprintf(stderr, "Error: Fail to attach hunter's shared memory\n");
+                shmdt(sys);
+                exit(EXIT_FAILURE);
+            }
+
+
+            login_menu_for_logged_in_hunters(huntshm, i);
+
+            shmdt(huntshm);
+            shmdt(sys);
+            return;
+        }
+    }
+    shmdt(sys);
+    fprintf(stdout, "Can't login. Username not found\n");
+    sleep(3);
+    return;
+}
+```
+
+Dimana langkah implementasinya:
+
+```c
+void login_registered_hunters() {
+	...
+}
+```
+1. Mendeklarasikan function `login_registered_hunters()`.
+
+```c
+key_t key;
+int shmid;
+```
+2. Mendeklarasikan variabel, dimana:
+- `key`: untuk menyimpan data key utama yang digunakan untuk mengidentifikasi dan mengelola segmen shared memory mana yang akan digunakan bersama oleh program `hunter` dan `system`.
+- `shmid`: untuk menyimpan data mengenai ID segmen shared memory yang digunakan oleh program `hunter` dan `system` untuk mengakses data.
+
+```c
+if ((key = get_system_key()) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory key\n");
+        exit(EXIT_FAILURE);
+}
+```
+3. Mendapatkan value dari variabel key yang diambil dari function `get_system_key()` yang tertera pada header file. Apabila gagal untuk mendapatkan key-nya, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory\n");
+        exit(EXIT_FAILURE);
+}
+```
+4. Function `shmget()` membuat segmen shared memory dengan key yang telah dibuat dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `shmid`. Jika segmen shared memory dengan key tersebut belum ada, maka akan dibuat segmen shared memory yang baru menggunakan `IPC_CREAT` dengan izin read-write untuk semua user. Jika segmen sudah ada, maka function hanya perlu mengambil ID segmen shared memory yang sudah dibuat sebelumnya. Terakhir, apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach to shared memory\n");
+        exit(EXIT_FAILURE);
+}
+```
+5. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+char username[50];
+```
+6. Mendeklarasikan variabel, dimana:
+- `username[50]`: untuk menyimpan data nama username hunter lama yang hendak login dengan batas panjang 50 karakter.
+
+```c
+fprintf(stdout, "Username: ");
+scanf("%49s", username);
+```
+7. Memerintahkan user untuk menginput nama username yang dikehendakinya untuk dilakukan proses login.
+
+```c
+while (getchar() != '\n');
+```
+8. Jika input user melebihi batas panjang 50 karakter, maka sisa karakter yang ada pada buffer input akan dihapus.
+
+```c
+int hshmid;
+```
+9. Mendeklarasikan variabel, dimana:
+- `hshmid`: untuk menyimpan data mengenai ID segmen shared memory khusus yang digunakan untuk hunter lama yang hendak login.
+
+```c
+for (int i = 0; i < sys->num_hunters; i++) {
+        struct Hunter *hunt = &sys->hunters[i];
+        if (!strcmp(username, hunt->username)) {
+		...
+	}
+
+	...
+}
+shmdt(sys);
+fprintf(stdout, "Can't login. Username not found\n");
+sleep(3);
+return;
+```
+10. Memastikan bahwa nama username yang dipilih saat login terdaftar pada sistem. Apabila username tidak ditemukan, maka program akan kembali ke halaman utama program `hunter` setelah melempar sebuah pesan ke stdout yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca pesan tersebut.
+
+```c
+if ((hshmid = shmget(hunt->shm_key, sizeof(struct Hunter), 0666)) == -1) {
+	fprintf(stderr, "Error: Fail to get shared memory for the selected hunter\n");
+	shmdt(sys);
+	exit(EXIT_FAILURE);
+}
+```
+11. Function `shmget()` mengambil segmen shared memory dengan key yang telah disimpan pada variabel `shm_key` yang diambil dari struktur Hunter yang terhubung pada shared memory khusus untuk hunter lama yang hendak login dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `hshmid`. Apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+struct Hunter *huntshm;
+```
+13. Mendeklarasikan variabel, dimana:
+- `huntshm`: struktur Hunter yang terhubung pada segmen shared memory khusus untuk hunter lama yang hendak login.
+
+```c
+if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+	fprintf(stderr, "Error: Fail to attach hunter's shared memory\n");
+	shmdt(sys);
+	exit(EXIT_FAILURE);
+}
+```
+14. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+login_menu_for_logged_in_hunters(huntshm, i);
+```
+15. Masuk ke dalam function `login_menu_for_logged_in_hunters()` untuk melanjutkan proses login dengan menampilkan UI ke layar terminal.
+
+```c
+shmdt(huntshm);
+shmdt(sys);
+return;
+```
+16. Setelah function `login_menu_for_logged_in_hunters()` dijalankan dan user hendak kembali ke halaman utama, maka sebelumnya program akan meng-detach segmen shared memory utama dan segmen shared memory khusus untuk hunter lama yang hendak login dengan menggunakan function `shmdt()`.
