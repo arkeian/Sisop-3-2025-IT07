@@ -1844,3 +1844,14 @@ const char* buy_weapon(int player_id, int weapon_id) {
 ```
 
 
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161358.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161418.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161436.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161453.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161529.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161552.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161629.png)
+![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161644.png)
+
+
+
