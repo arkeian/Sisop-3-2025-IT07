@@ -2370,6 +2370,56 @@ void info_of_all_dungeons() {
 }
 ```
 
+
+Dimana langkah implementasinya:
+
+```c
+void info_of_all_dungeons() {
+	...
+}
+```
+1. Mendeklarasikan function `info_of_all_dungeons()`.
+
+```c
+if (sys->num_dungeons == 0) {
+        fprintf(stderr, "\nNo dungeons have yet to be generated\n");
+        sleep(3);
+        return;
+}
+```
+2. Memastikan bahwa setidaknya terdapat satu dungeon yang telah di-generate oleh sistem. Apabila terindikasi bahwa tidak terdapat dungeon yang ter-generate, maka program akan kembali ke halaman awal setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
+
+```c
+else {
+        fprintf(stdout, "\n=== DUNGEON INFO ===\n");
+	...
+}
+```
+3. Menampilkan UI berupa header ke layar terminal.
+
+```c
+for (int i = 0; i < sys->num_dungeons; i++) {
+    struct Dungeon *dngn = &sys->dungeons[i];
+    fprintf(stdout, "[Dungeon %d]\n", i + 1);
+    fprintf(stdout, "Name: %-49s\nMinimum Level: %-3d\nEXP Reward: %-3d\nATK: %-3d\nHP: %-3d\nDEF: %-3d\nKey: %d\n\n",
+	    dngn->name,
+	    dngn->min_level,
+	    dngn->exp,
+	    dngn->atk,
+	    dngn->hp,
+	    dngn->def,
+	    dngn->shm_key);
+}
+```
+4. Merupakan suatu for-loop yang mengiterasi terhadap setiap dungeon yang tersimpan pada struktur Dungeon yang terhubung pada segmen shared memory utama dan menampilkan nama dan status setiap dungeon tersebut ke layar terminal.
+
+```c
+fprintf(stdout, "\nPress Enter key to return to menu");
+while (getchar()!='\n');
+getchar();
+```
+5. Merupakan suatu fitur untuk menunggu user menekan Enter key agar program `system` kembali ke halaman awal. Digunakan agar user dapat membaca tampilan informasi dungeon tanpa perlu mempertimbangkan constraint waktu yang diterapkan oleh function `sleep()`.
+
 ### • Soal  4.F: Appropiate Dungeon
 
 Pada subsoal 4.F: Appropiate Dungeon, kita diperintahkan untuk membuat sebuah program untuk melihat daftar dungeon yang sesuai dengan level hunter dan dapat dlakukan proses raid pada program `hunter`. Untuk membuat program ini dibuatlah suatu function bernama `show_available_dungeons_based_on_hunters_level()`, dengan tampilan sebagai berikut:
