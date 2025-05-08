@@ -240,6 +240,58 @@ int main(int argc, char *argv[]) {
 
 ## • Soal  3
 
+# The Lost Dungeon - Sistem Adventure Berbasis RPC
+
+Sebuah dungeon adventure multiplayer dengan fitur eksplorasi, battle, dan manajemen inventory menggunakan arsitektur **RPC server-client**.
+
+## 🏗️ Struktur Program
+
+soal_3/
+├── dungeon.c # Server utama
+├── player.c # Client pemain
+└── shop.c # Sistem toko senjata
+
+
+## 🖥️ Komponen Utama
+
+### **Server (`dungeon.c`)**
+- Berjalan sebagai **daemon process** di background
+- Mendukung koneksi dari **multiple clients** secara paralel
+- Fungsi utama:
+  - Memproses perintah RPC dari client
+  - Mengelola state dungeon dan battle
+  - Menyimpan data senjata dari `shop.c`
+
+### **Client (`player.c`)**
+- Terhubung ke server via **socket RPC**
+- Menu interaktif dengan fitur:
+  - 🏰 Eksplorasi dungeon
+  - ⚔️ Battle mode
+  - 🛒 Toko senjata
+  - 🎒 Inventory management
+  - 📊 Status player
+
+## ⚙️ Fitur Wajib
+
+### 🏪 Toko Senjata (`shop.c`)
+| Requirement           | Detail                                                                 |
+|-----------------------|-----------------------------------------------------------------------|
+| Jumlah senjata        | Minimal 5 jenis                                                      |
+| Spesifikasi           | - Harga<br>- Damage value<br>- Minimal 2 senjata dengan passive effect |
+| Contoh Passive        | Critical chance +15%, Lifesteal 10% HP                               |
+| Inventory System      | Penyimpanan senjata yang dibeli                                      |
+
+### ⚔️ Battle System
+Musuh random: HP (50-200), rewards (gold/EXP random).
+Damage calculation:
+Base damage + rumus random (misal: rand() % 20 + 10).
+Critical hit (2x damage) dengan chance tertentu.
+Health bar visual yang dinamis.
+Efek passive senjata saat battle (contoh: "Passive activated: Lifesteal!").
+
+## peneyelseain
+
+
 ## • Soal  4: Hunters System
 
 ### • Pendahuluan
