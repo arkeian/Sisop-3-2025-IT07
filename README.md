@@ -2829,7 +2829,36 @@ else {
 }
 ```
 
-Beserta penambahan opsi berikut pada switch-case du function yang sama:
+Dimana langkah implementasinya:
+
+```c
+if (tututitutut_toggle && sys->num_dungeons > 0) {
+	...
+}
+```
+1. Memastikan bahwa user hendak mendapatkan notifikasi terkait dungeon yang terbuka dan memastikan juga bahwa setidaknya terdapat satu dungeon yang sudah di-generate oleh program `system`.
+
+```c
+if (sys->current_notification_index >= sys->num_dungeons) {
+	sys->current_notification_index = 0;
+}
+```
+2. Sistem notifikasi akan menampilkan dungeon yang terbuka sesuai urutan dungeon tersebut di-generate oleh program `system`. Apabila sudah tidak ada lagi dungeon baru yang dapat ditampilkan sebagai notifikasi, maka program akan menampilkan lagi dungeon yang masih terbuka mulai dari awal sesuai urutan dungeon.
+
+```c
+struct Dungeon *davail = &sys->dungeons[sys->current_notification_index++];
+fprintf(stdout, "%s for minimum level %d opened!\n", davail->name, davail->min_level);
+```
+3. Mengambil data terkait nama dan status setiap dungeon yang hendak ditampilkan sebagai notifikasi pada layar terminal yang tersimpan dalam segmen shared memory utama.
+
+```c
+else {
+	fprintf(stdout, "\n");
+}
+```
+4. Jika user tidak menghendaki untuk notifikasi ditampilkan atau belum ada dungeon yang di-generate oleh program `system`, maka program akan hanya menampilkan line kosong pada layar terminal.
+ 
+Selain pembaruan pada bagian tersebut, function `login_menu_for_logged_in_hunters()` juga mendapat penambahan opsi pada switch-case dengan tampilan sebagai berikut:
 
 ```c
 case 4:
@@ -2838,6 +2867,19 @@ case 4:
     sleep(3);
     break;
 ```
+
+Dimana langkah implementasinya:
+
+```c
+tututitutut_toggle = tututitutut_toggle ? 0 : 1;
+```
+1. Jika user memilih opsi keempat pada menu login hunter lama, maka sistem kendali notifikasi user akan dinyalakan atau dimatikan tergantung dengan status sistem kendali user sebelumnya.
+
+```c
+fprintf(stdout, tututitutut_toggle ? "Notifications turned on!\n" : "Notifications turned off!\n");
+sleep(3);
+```
+2. Mengoutput suatu pesan ke user bahwa program toggle notifikasi berhasil berjalan dan status pengaturan sistem kendali notifikasi user telah diubah. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
 
 ### • Soal  4.L: Destruksi Shared Memory
 
@@ -2853,6 +2895,32 @@ for (int i = 0; i < sys->num_dungeons; i++) {
 shmdt(sys);
 shmctl(shmid, IPC_RMID, NULL);
 ```
+
+Dimana langkah implementasinya:
+
+```c
+for (int i = 0; i < sys->num_hunters; i++) {
+	shmctl(sys->hunters[i].shm_key, IPC_RMID, NULL);
+}
+```
+1. Memerintahkan program untuk melakukan proses destruksi dan menghapus semua data setiap hunter yang tersimpan pada segmen shared memory utama menggunakan function `shmctl()`.
+
+```c
+for (int i = 0; i < sys->num_dungeons; i++) {
+	shmctl(sys->dungeons[i].shm_key, IPC_RMID, NULL);
+}
+```
+2. Memerintahkan program untuk melakukan proses destruksi dan menghapus semua data setiap dungeon yang tersimpan pada segmen shared memory utama menggunakan function `shmctl()`.
+
+```c
+shmdt(sys);
+```
+3. Meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+
+```c
+shmctl(shmid, IPC_RMID, NULL);
+```
+4. Memerintahkan program untuk melakukan proses destruksi segmen shared memory utama.
 
 ### • Soal 4: Kendala yang Dialami
 
