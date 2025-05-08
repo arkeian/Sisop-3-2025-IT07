@@ -1464,3 +1464,383 @@ void generate_random_dungeons() {
     getchar();
 }
 ```
+
+## REVISI
+
+## soal 3
+
+dungeon.c
+```c
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <time.h>
+
+#define MAX_BUFFER 1024
+
+struct Weapon {
+    int id;
+    char name[50];
+    int price;
+    int damage;
+    char passive[50];
+};
+
+struct Player {
+    int id;
+    char name[50];
+    int gold;
+    char weapon[50];
+    int damage;
+    char passive[50];
+    int kills;
+    struct Weapon inventory[10];
+    int inventory_size;
+    struct Weapon equipped_weapon;
+};
+
+struct Player players[10];
+struct Weapon weapons[5];
+int enemy_health = 200;
+
+// Import dari shop.c
+extern const char* buy_weapon(int player_id, int weapon_id);
+
+void init_shop() {
+    weapons[0] = (struct Weapon){1, "Sea Halberd", 75, 15, ""};
+    weapons[1] = (struct Weapon){2, "War Axe", 70, 20, ""};
+    weapons[2] = (struct Weapon){3, "Windtalker", 75, 20, "10% Attack Speed"};
+    weapons[3] = (struct Weapon){4, "Blade of Despair", 100, 70, "+16 Physical Attack"};
+}
+
+void init_player(int id, const char* name) {
+    players[id].id = id;
+    strcpy(players[id].name, name);
+    players[id].gold = 100;
+    strcpy(players[id].weapon, "Fists");
+    players[id].damage = 5;
+    players[id].inventory_size = 0;
+    strcpy(players[id].passive, "");
+    players[id].kills = 0;
+    players[id].equipped_weapon = (struct Weapon){0};
+}
+
+void send_inventory(int client_sock, int player_id) {
+    char response[MAX_BUFFER] = "INVENTORY:";
+    for (int i = 0; i < players[player_id].inventory_size; i++) {
+        char weapon_info[100];
+        sprintf(weapon_info, "%d. %s (Dmg: %d)", i+1, 
+                players[player_id].inventory[i].name, 
+                players[player_id].inventory[i].damage);
+        
+        if (strlen(players[player_id].inventory[i].passive) > 0) {
+            sprintf(weapon_info + strlen(weapon_info), " | Passive: %s", 
+                    players[player_id].inventory[i].passive);
+        }
+        strcat(response, weapon_info);
+        strcat(response, ";");
+    }
+    send(client_sock, response, strlen(response), 0);
+}
+
+void equip_weapon(int client_sock, int player_id, int weapon_index) {
+    if (weapon_index < 1 || weapon_index > players[player_id].inventory_size) {
+        send(client_sock, "Invalid weapon index!", 21, 0);
+        return;
+    }
+    
+    players[player_id].equipped_weapon = players[player_id].inventory[weapon_index-1];
+    strcpy(players[player_id].weapon, players[player_id].equipped_weapon.name);
+    players[player_id].damage = players[player_id].equipped_weapon.damage;
+    strcpy(players[player_id].passive, players[player_id].equipped_weapon.passive);
+
+    if (strstr(players[player_id].passive, "+16 Physical Attack")) {
+        players[player_id].damage += 16;
+    }
+
+    send(client_sock, "Weapon equipped!", 16, 0);
+}
+
+void battle(int player_id, int client_sock) {
+    char response[MAX_BUFFER] = {0};
+    int enemy_hp = 100 + rand() % 101;
+    int damage = players[player_id].damage + (rand() % 10);
+
+    if (strcmp(players[player_id].equipped_weapon.name, "Blade of Despair") == 0) {
+        strcat(response, "Passive Activated: +16 Physical Attack!\n");
+        damage += 16;
+    }
+
+    if (strcmp(players[player_id].equipped_weapon.name, "Windtalker") == 0 && (rand() % 10 == 0)) {
+        strcat(response, "Passive Activated: 10% Attack Speed!\n");
+    }
+
+    if (rand() % 3 == 0) {
+        damage *= 2;
+        strcat(response, "=== CRITICAL HIT! ===\n");
+    }
+
+    enemy_hp -= damage;
+
+    char damage_msg[50];
+    sprintf(damage_msg, "You dealt %d damage!\n", damage);
+    strcat(response, damage_msg);
+
+    if (enemy_hp <= 0) {
+        int reward = 20 + rand() % 31;
+        players[player_id].gold += reward;
+        players[player_id].kills++;
+
+        char reward_msg[50];
+        sprintf(reward_msg, "Enemy defeated! Reward: %d gold.\n", reward);
+        strcat(response, reward_msg);
+    } else {
+        char health_msg[50];
+        sprintf(health_msg, "Enemy Health: %d/200\n", enemy_hp);
+        strcat(response, health_msg);
+    }
+
+    send(client_sock, response, strlen(response), 0);
+}
+
+void handle_command(int client_sock, int player_id) {
+    char buffer[MAX_BUFFER] = {0};
+    read(client_sock, buffer, MAX_BUFFER);
+
+    if (strncmp(buffer, "STATS", 5) == 0) {
+        char response[MAX_BUFFER];
+        sprintf(response, "Gold: %d | Weapon: %s | Damage: %d | Kills: %d | Passive: %s",
+                players[player_id].gold, players[player_id].weapon, 
+                players[player_id].damage, players[player_id].kills, 
+                players[player_id].passive);
+        send(client_sock, response, strlen(response), 0);
+    } 
+    else if (strncmp(buffer, "BUY ", 4) == 0) {
+        int weapon_id = atoi(buffer + 4);
+        const char* result = buy_weapon(player_id, weapon_id);
+        send(client_sock, result, strlen(result), 0);
+    }
+    else if (strncmp(buffer, "BATTLE", 6) == 0) {
+        battle(player_id, client_sock);
+    }
+    else if (strncmp(buffer, "INVENTORY", 9) == 0) {
+        send_inventory(client_sock, player_id);
+    }
+    else if (strncmp(buffer, "EQUIP ", 6) == 0) {
+        int weapon_index = atoi(buffer + 6);
+        equip_weapon(client_sock, player_id, weapon_index);
+    }
+    else {
+        const char* msg = "Unknown command!";
+        send(client_sock, msg, strlen(msg), 0);
+    }
+}
+
+int main() {
+    srand(time(NULL));
+    init_shop();
+    init_player(0, "Hero");
+
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t addr_size = sizeof(client_addr);
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(8080);
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+
+    bind(sockfd, (struct sockaddr*)&server_addr, sizeof(server_addr));
+    listen(sockfd, 5);
+    printf("Server started on port 8080...\n");
+
+    int client_sock = accept(sockfd, (struct sockaddr*)&client_addr, &addr_size);
+    while (1) {
+        handle_command(client_sock, 0);
+    }
+
+    close(client_sock);
+    close(sockfd);
+    return 0;
+}
+
+
+```
+
+player.c
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+#define PORT 8080
+#define MAX_BUFFER 1024
+
+int main() {
+    int sock = 0;
+    struct sockaddr_in serv_addr;
+    char buffer[MAX_BUFFER];
+
+    // Membuat socket
+    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        perror("Socket creation error");
+        return -1;
+    }
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_port = htons(PORT);
+
+    if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
+        perror("Invalid address / Address not supported");
+        return -1;
+    }
+
+    if (connect(sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
+        perror("Connection Failed");
+        return -1;
+    }
+
+    // Menu interaktif
+    while (1) {
+        printf("\n==== MENU ====\n");
+        printf("1. Show Stats\n2. Buy Weapon\n3. View Inventory\n4. Battle\n5. Exit\nChoice: ");   
+        
+        int choice;
+        scanf("%d", &choice);
+        getchar(); // consume newline
+        memset(buffer, 0, MAX_BUFFER);
+
+        switch (choice) {
+            case 1:
+                send(sock, "STATS", strlen("STATS"), 0);
+                read(sock, buffer, MAX_BUFFER);
+                printf("\n%s\n", buffer);
+                break;
+
+            case 2:
+                printf("\nWeapons:\n1. Sea Halberd (75)\n2. War Axe (70)\n3. Windtalker (75)\n4. Blade of Despair (100)\n");
+                printf("Choose weapon ID: ");
+                int weapon_id;
+                scanf("%d", &weapon_id);
+                getchar(); // consume newline
+                sprintf(buffer, "BUY %d", weapon_id);
+                send(sock, buffer, strlen(buffer), 0);
+                memset(buffer, 0, MAX_BUFFER);
+                read(sock, buffer, MAX_BUFFER);
+                printf("\n%s\n", buffer);
+                break;
+
+            case 3:
+                send(sock, "INVENTORY", strlen("INVENTORY"), 0);
+                memset(buffer, 0, MAX_BUFFER);
+                read(sock, buffer, MAX_BUFFER);
+
+                printf("\n=== INVENTORY ===\n");
+                char *weapon = strtok(buffer, ";");
+                int item_num = 0;
+                while (weapon != NULL) {
+                    if (strncmp(weapon, "INVENTORY:", 10) == 0) {
+                        weapon += 10;
+                    }
+                    printf("%s\n", weapon);
+                    item_num++;
+                    weapon = strtok(NULL, ";");
+                }
+
+                printf("\nEnter weapon number to equip (0 to cancel): ");
+                int choice_equip;
+                scanf("%d", &choice_equip);
+                getchar(); // consume newline
+                if (choice_equip > 0 && choice_equip <= item_num) {
+                    sprintf(buffer, "EQUIP %d", choice_equip);
+                    send(sock, buffer, strlen(buffer), 0);
+                    memset(buffer, 0, MAX_BUFFER);
+                    read(sock, buffer, MAX_BUFFER);
+                    printf("\n%s\n", buffer);
+                }
+                break;
+
+            case 4:
+                send(sock, "BATTLE", strlen("BATTLE"), 0);
+                memset(buffer, 0, MAX_BUFFER);
+                read(sock, buffer, MAX_BUFFER);
+                printf("\n%s\n", buffer);
+                break;
+
+            case 5:
+                printf("Exiting...\n");
+                close(sock);
+                return 0;
+
+            default:
+                printf("Invalid choice!\n");
+        }
+
+        memset(buffer, 0, MAX_BUFFER); // bersihkan buffer setiap akhir loop
+    }
+
+    return 0;
+}
+```
+shop.c
+
+```c
+#include <string.h>
+#include <stdio.h>
+
+/
+struct Weapon {
+    int id;
+    char name[50];
+    int price;
+    int damage;
+    char passive[50];
+};
+
+struct Player {
+    int id;
+    char name[50];
+    int gold;
+    char weapon[50];
+    int damage;
+    char passive[50];
+    struct Weapon inventory[10];
+    int inventory_size;
+    struct Weapon equipped_weapon;
+};
+
+// Deklarasi variabel global dari dungeon.c
+extern struct Player players[10];
+extern struct Weapon weapons[5];
+
+// Fungsi utama pembelian senjata
+const char* buy_weapon(int player_id, int weapon_id) {
+    struct Weapon w = weapons[weapon_id - 1];
+
+    if (players[player_id].gold >= w.price) {
+        players[player_id].gold -= w.price;
+
+        // Masukkan ke inventory
+        players[player_id].inventory[players[player_id].inventory_size++] = w;
+
+        // Auto-equip jika belum punya
+        if (strcmp(players[player_id].weapon, "Fists") == 0) {
+            strcpy(players[player_id].weapon, w.name);
+            players[player_id].damage = w.damage;
+            strcpy(players[player_id].passive, w.passive);
+            players[player_id].equipped_weapon = w;
+        }
+
+        return "Purchase successful!";
+    } else {
+        return "Not enough gold!";
+    }
+}
+
+```
+
+
