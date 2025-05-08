@@ -237,7 +237,7 @@ int main(int argc, char *argv[]) {
 }
 
 ```
-# delivery_agent
+### delivery_agent
 Program ini bertugas melakukan pengiriman otomatis untuk pesanan bertipe Express menggunakan multi-threading. Program ini juga dapat membaca file.csv dan menyimpannya ke shared memory. Berikut ini penjelasan kode nya :
 ```c
 typedef enum {
@@ -326,7 +326,96 @@ pthread_join(t3, NULL);
 ```
 Pada bagian ini, program membuat tiga thread menggunakan `pthread_create`, yang masing-masing dijalankan sebagai agen pengantar dengan nama "AGENT A", "AGENT B", dan "AGENT C". Ketiga agen ini akan bekerja secara paralel untuk memantau shared memory dan mengeksekusi pengiriman pesanan bertipe *Express* secara otomatis. Fungsi `agent_thread` akan dijalankan oleh setiap thread dan terus menerus mengecek apakah ada pesanan bertipe *Express* yang masih berstatus *PENDING*. Jika ditemukan, pesanan tersebut akan ditandai sebagai *DELIVERED*, nama agen dicatat, dan pengiriman akan dilog-kan ke dalam file `delivery.log`. Setelah semua thread dibuat, fungsi `pthread_join` digunakan untuk menunggu setiap thread menyelesaikan tugasnya. Karena setiap agen berjalan dalam loop tak hingga, `pthread_join` ini juga memastikan agar proses utama tidak langsung keluar dan tetap menunggu agen-agen tersebut aktif selama program berjalan.
 
+### dispatcher
+Program `dispatcher.c` bertugas untuk menangani pesanan bertipe *Reguler* yang tidak dikirim otomatis oleh thread seperti pada *delivery\_agent.c*. Program ini menerima argumen dari baris perintah dan menyediakan tiga opsi: `-deliver [Nama]` untuk mengirim paket reguler secara manual, `-status [Nama]` untuk melihat status pengiriman sebuah pesanan, dan `-list` untuk menampilkan semua pesanan beserta statusnya. Di awal, program mencoba mengakses shared memory menggunakan `shmget` dan `shmat` agar dapat membaca dan memodifikasi data pesanan yang telah di-load oleh `delivery_agent`.
 
+Saat perintah `-deliver` diberikan, program mencari nama pelanggan pada data shared memory dan memastikan bahwa pesanan tersebut merupakan pesanan reguler yang masih berstatus *PENDING*. Jika ditemukan, status akan diubah menjadi *DELIVERED* dan nama agen pengantar diambil dari variabel lingkungan `USER` atau `LOGNAME` untuk mencatat siapa yang mengeksekusi pengiriman tersebut. Selanjutnya, informasi pengiriman ditulis ke dalam file `delivery.log` melalui fungsi `write_log`.
+
+Jika perintah yang diberikan adalah `-status`, maka program akan menampilkan status pesanan pelanggan tertentu, apakah sudah terkirim beserta nama agen, atau masih menunggu. Sementara itu, perintah `-list` digunakan untuk menampilkan daftar semua pesanan beserta statusnya satu per satu. Dengan pendekatan ini, `dispatcher.c` memberikan kontrol manual kepada pengguna untuk menangani pengiriman reguler secara fleksibel, sambil tetap terintegrasi dengan sistem shared memory dan logging yang digunakan oleh *delivery\_agent.c*.
+
+Berikut ini penjelasan kodenya :
+```c
+void write_log(const char *agent, const char *name, const char *address) {
+    FILE *log = fopen("delivery.log", "a");
+    time_t now = time(NULL);
+    struct tm *t = localtime(&now);
+    fprintf(log, "[%02d/%02d/%04d %02d:%02d:%02d] [AGENT %s] Reguler package delivered to %s in %s\n",
+            t->tm_mday, t->tm_mon + 1, t->tm_year + 1900,
+            t->tm_hour, t->tm_min, t->tm_sec,
+            agent, name, address);
+    fclose(log);
+}
+```
+Fungsi `write_log` bertugas untuk menulis log pengiriman pesanan ke file delivery.log. Fungsi ini menggunakan `time(NULL)` dan `localtime()` untuk mendapatkan waktu saat ini dan menulis log ke dalam file dengan format yang sudah ditentukan, mencatat waktu, agen, dan informasi pesanan (nama dan alamat).
+```c
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        printf("Usage:\n  ./dispatcher -deliver [Nama]\n  ./dispatcher -status [Nama]\n  ./dispatcher -list\n");
+        return 1;
+    }
+```
+Pada awal fungsi main, program memeriksa jumlah argumen yang diberikan. Jika jumlah argumen kurang dari 2, maka akan menampilkan pesan penggunaan program dan keluar.
+```c
+    int shmid = shmget(SHM_KEY, sizeof(SharedData), 0666);
+    if (shmid < 0) {
+        perror("Shared memory not found");
+        return 1;
+    }
+    SharedData *data = (SharedData *)shmat(shmid, NULL, 0);
+```
+Di sini, program mencoba mengakses shared memory menggunakan `shmget` dengan kunci `SHM_KEY`. Jika shared memory tidak ditemukan, program menampilkan pesan kesalahan dan keluar. Jika ditemukan, program akan mengaitkan shared memory tersebut dengan pointer `data` menggunakan `shmat`.
+```c
+    if (strcmp(argv[1], "-deliver") == 0 && argc == 3) {
+        char *name = argv[2];
+        for (int i = 0; i < data->count; i++) {
+            if (strcmp(data->orders[i].name, name) == 0 &&
+                data->orders[i].type == REGULER &&
+                data->orders[i].status == PENDING) {
+                data->orders[i].status = DELIVERED;
+
+                const char *username = getenv("USER");
+                if (!username) username = getenv("LOGNAME");
+                if (!username) username = "Unknown";
+                strncpy(data->orders[i].agent, username, sizeof(data->orders[i].agent));
+
+                write_log(data->orders[i].agent, data->orders[i].name, data->orders[i].address);
+                printf("Order %s delivered.\n", name);
+                return 0;
+            }
+        }
+        printf("Order not found or already delivered.\n");
+```
+Jika perintah yang diberikan adalah `-deliver`, program akan mencari pesanan berdasarkan nama yang diberikan `(argv[2])`. Jika pesanan ditemukan dan berstatus `PENDING`, maka status pesanan akan diubah menjadi `DELIVERED`, dan nama agen yang mengirimkan pesanan akan diambil dari variabel lingkungan `USER` atau `LOGNAME`. Setelah itu, informasi pengiriman dicatat di file log dengan memanggil fungsi `write_log`.
+```c
+    } else if (strcmp(argv[1], "-status") == 0 && argc == 3) {
+        char *name = argv[2];
+        for (int i = 0; i < data->count; i++) {
+            if (strcmp(data->orders[i].name, name) == 0) {
+                if (data->orders[i].status == DELIVERED) {
+                    printf("Status for %s: Delivered by Agent %s\n", name, data->orders[i].agent);
+                } else {
+                    printf("Status for %s: Pending\n", name);
+                }
+                return 0;
+            }
+        }
+        printf("Order not found.\n");
+```
+Jika perintah yang diberikan adalah `-status`, program akan mencari pesanan berdasarkan nama yang diberikan. Jika pesanan ditemukan, statusnya akan ditampilkan. Jika sudah dikirim, nama agen pengantar juga akan ditampilkan.
+```c
+    } else if (strcmp(argv[1], "-list") == 0) {
+        for (int i = 0; i < data->count; i++) {
+            printf("%s - %s\n", data->orders[i].name,
+                   data->orders[i].status == DELIVERED ? "Delivered" : "Pending");
+        }
+```
+Jika perintah yang diberikan adalah `-list`, program akan menampilkan seluruh pesanan yang ada beserta statusnya (apakah sudah dikirim atau masih pending).
+```c
+    } else {
+        printf("Invalid command.\n");
+    }
+```
+Jika perintah yang diberikan tidak sesuai dengan yang dikenali (misalnya bukan `-deliver`, `-status`, atau `-list`), maka program akan menampilkan pesan bahwa perintah tidak valid.
 ## • Soal  3
 
 # The Lost Dungeon - Sistem Adventure Berbasis RPC
