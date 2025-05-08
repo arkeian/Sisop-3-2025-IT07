@@ -1909,9 +1909,9 @@ void generate_random_dungeons() {
 }
 ```
 
-## REVISI
+## • REVISI
 
-## soal 3
+### • Soal 3
 
 dungeon.c
 ```c
@@ -2297,5 +2297,85 @@ const char* buy_weapon(int player_id, int weapon_id) {
 ![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161629.png)
 ![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161644.png)
 
+### • Soal 4
 
+Pada soal 4 terdapat revisi di mana sistem notifikasi pada awalnya masih bersifat statis dan belum bisa memperbarui dirinya sendiri setiap tiga detik. Adapun bagian program `hunter` yang mengalami perubahan agar masalah tersebut dapat diselesaikan adalah sebagai berikut:
 
+```c
+int is_user_in_login_menu = 0;
+int is_tututitutut_on = 0;
+int is_tututitutut_toggle_function_on;
+// Merupakan variabel-variabel yang bersifat global
+
+void *tututitutut_toggle(void *arg);
+
+void login_menu_for_logged_in_hunters(struct Hunter *huntshm, int huntid) {
+    is_tututitutut_toggle_function_on = 1;
+
+    pthread_t tid;
+    pthread_create(&tid, NULL, tututitutut_toggle, NULL);
+
+    int opt;
+    do {
+        is_user_in_login_menu = 1;
+        fprintf(stdout, "\e[H\e[2J\e[3J");
+        fprintf(stdout, "=== HUNTER SYSTEM ===\n");
+        fprintf(stdout, "===%s's MENU ===\n1. List Dungeon\n2. Raid\n3. Battle\n4. Toggle Notification\n5. Exit\nChoice: ", huntshm->username);
+
+        if (scanf("%d", &opt) != 1) {
+            opt = -1;
+            while (getchar() != '\n');
+        }
+        is_user_in_login_menu = 0;
+
+        switch (opt) {
+        case 1:
+            show_available_dungeons_based_on_hunters_level(huntshm->level);
+            break;
+        case 2:
+            conquer_raidable_dungeons_based_on_hunters_level(huntshm, huntid);
+            break;
+        case 3:
+            if (battle_other_hunters_based_on_stats(huntshm, huntid) == 1) {
+                opt = 5;
+            }
+            break;
+        case 4:
+            is_tututitutut_on = is_tututitutut_on ? 0 : 1;
+            fprintf(stdout, is_tututitutut_on ? "Notifications turned on!\n" : "Notifications turned off!\n");
+            sleep(3);
+            break;
+        case 5:
+            break;
+        default:
+            fprintf(stderr, "Error: Unknown Option\n");
+            sleep(3);
+        }
+    } while (opt != 5);
+
+    is_tututitutut_toggle_function_on = 0;
+    pthread_join(tid, NULL);
+    return;
+}
+
+void *tututitutut_toggle(void *arg) {
+    (void)arg;
+    int notif_cycle = 0;
+    while (is_tututitutut_toggle_function_on) {
+        sleep(3);
+        if (!is_tututitutut_on || !is_user_in_login_menu || sys->num_dungeons == 0) {
+            continue;
+        }
+        if (notif_cycle >= sys->num_dungeons) {
+            notif_cycle = 0;
+        }
+        struct Dungeon *davail = &sys->dungeons[notif_cycle++];
+        fprintf(stdout, "\033[1;1H%s for minimum level %d opened!\n", davail->name, davail->min_level);
+    }
+    return NULL;
+}
+```
+
+#### • Kendala yang masih dialami
+
+Pada program tersebut baris yang berisi notifikasi diletakkan pada baris pertama pada layar terminal. Alhasil, baris yang berisi `=== HUNTER SYSTEM ===` secara terpaksa terhapus dari layar terminal dan letak untuk menginput opsi pada terminal berpindah ke baris kedua yang menyebabkan karakter yang diinputkan tidak begitu terlihat pada layar terminal. Apabila pada program diimplementasikan fitur untuk mencegah hal tersebut terjadi, misalnya dengan menggunakan `\n` atau sejenisnya, maka baris notifikasi tidak akan muncul sama sekali. Begitu pula percobaan untuk mengembalikan kursor ke posisi setelah kata `Choice: `akan menyebabkan baris notifikasi tidak muncul. Namun, secara keseluruhan sistem notifikasi sudah dapat memperbarui dirinya sendiri setiap tiga detik.
