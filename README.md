@@ -664,7 +664,7 @@ do {
     ...    
 } while (opt != 6);
 ```
-11. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada user selama admin tidak memilih opsi keenam yang mengeluarkan admin dari program.
+11. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada admin selama admin tidak memilih opsi keenam yang mengeluarkan admin dari program.
 
 ```c
 fprintf(stdout, "\e[H\e[2J\e[3J");
@@ -871,7 +871,7 @@ if (numh > MAX_HUNTERS - 1) {
 	return;
 }
 ```
-7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program akan kembali ke halaman utama program `hunter` setelah melempar sebuah pesan ke stdout yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca pesan tersebut.
+7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program akan kembali ke halaman awal program `hunter` setelah melempar sebuah pesan ke stdout yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca pesan tersebut.
 
 ```c
 char username[50];
@@ -976,9 +976,9 @@ sleep(3);
 ```
 22. Mengoutput suatu pesan ke user bahwa program registrasi berhasil berjalan dan user telah diregistrasi atau didaftarkan ke dalam sistem. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
 
-#### a. Soal 4.B.2: `login_registered_hunters()`
+#### b. Soal 4.B.2: `login_registered_hunters()`
 
-Function `login_registered_hunters()` memiliki tugas utama yaitu melakukan proses login untuk hunter lama. Adapun tampilan function `login_registered_hunters()` adalah sebagai berikut:
+Function `login_registered_hunters()` memiliki tugas utama yaitu melakukan proses login untuk hunter lama, khususnya melakukan proses verifikasi apakah user terdaftar di dalam sistem. Adapun tampilan function `login_registered_hunters()` adalah sebagai berikut:
 
 ```c
 void login_registered_hunters() {
@@ -1115,7 +1115,7 @@ fprintf(stdout, "Can't login. Username not found\n");
 sleep(3);
 return;
 ```
-10. Memastikan bahwa nama username yang dipilih saat login terdaftar pada sistem. Apabila username tidak ditemukan, maka program akan kembali ke halaman utama program `hunter` setelah melempar sebuah pesan ke stdout yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca pesan tersebut.
+10. Memastikan bahwa nama username yang dipilih saat login terdaftar pada sistem. Apabila username tidak ditemukan, maka program akan kembali ke halaman awal program `hunter` setelah melempar sebuah pesan ke stdout yang akan ditampilkan ke user, meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca pesan tersebut.
 
 ```c
 if ((hshmid = shmget(hunt->shm_key, sizeof(struct Hunter), 0666)) == -1) {
@@ -1129,7 +1129,7 @@ if ((hshmid = shmget(hunt->shm_key, sizeof(struct Hunter), 0666)) == -1) {
 ```c
 struct Hunter *huntshm;
 ```
-13. Mendeklarasikan variabel, dimana:
+12. Mendeklarasikan variabel, dimana:
 - `huntshm`: struktur Hunter yang terhubung pada segmen shared memory khusus untuk hunter lama yang hendak login.
 
 ```c
@@ -1139,16 +1139,162 @@ if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
 	exit(EXIT_FAILURE);
 }
 ```
-14. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
+13. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan meng-detach segmen shared memory utama dengan menggunakan function `shmdt()`.
 
 ```c
 login_menu_for_logged_in_hunters(huntshm, i);
 ```
-15. Masuk ke dalam function `login_menu_for_logged_in_hunters()` untuk melanjutkan proses login dengan menampilkan UI ke layar terminal.
+14. Masuk ke dalam function `login_menu_for_logged_in_hunters()` untuk melanjutkan proses login dengan menampilkan UI ke layar terminal dan mem-passing struktur Hunter yang terhubung pada segmen shared memory khusus untuk hunter lama yang hendak login dan urutan registrasi hunter dalam sistem.
 
 ```c
 shmdt(huntshm);
 shmdt(sys);
 return;
 ```
-16. Setelah function `login_menu_for_logged_in_hunters()` dijalankan dan user hendak kembali ke halaman utama, maka sebelumnya program akan meng-detach segmen shared memory utama dan segmen shared memory khusus untuk hunter lama yang hendak login dengan menggunakan function `shmdt()`.
+15. Setelah function `login_menu_for_logged_in_hunters()` dijalankan dan user hendak kembali ke halaman awal, maka sebelumnya program akan meng-detach segmen shared memory utama dan segmen shared memory khusus untuk hunter lama yang hendak login dengan menggunakan function `shmdt()`.
+
+#### c. Soal 4.B.3: `login_menu_for_logged_in_hunters()`
+
+Function `login_menu_for_logged_in_hunters()` memiliki tugas utama yaitu melanjutkan proses login untuk hunter lama yang sudah terverifikasi oleh sistem melalui function `login_registered_hunters()` dan terbukti telah terdaftar sebelumnya. Adapun tampilan function `login_menu_for_logged_in_hunters()` adalah sebagai berikut:
+
+```c
+void login_menu_for_logged_in_hunters(struct Hunter *huntshm, int huntid) {
+    int opt, tututitutut_toggle = 0;
+    do {
+        fprintf(stdout, "\e[H\e[2J\e[3J");
+        fprintf(stdout, "=== HUNTER SYSTEM ===\n");
+
+        if (tututitutut_toggle && sys->num_dungeons > 0) {
+            if (sys->current_notification_index >= sys->num_dungeons) {
+                sys->current_notification_index = 0;
+            }
+            struct Dungeon *davail = &sys->dungeons[sys->current_notification_index++];
+            fprintf(stdout, "%s for minimum level %d opened!\n", davail->name, davail->min_level);
+        }
+        else {
+            fprintf(stdout, "\n");
+        }
+        fprintf(stdout, "===%s's MENU ===\n1. List Dungeon\n2. Raid\n3. Battle\n4. Toggle Notification\n5. Exit\nChoice: ", huntshm->username);
+
+        if (scanf("%d", &opt) != 1) {
+            opt = -1;
+            while (getchar() != '\n');
+        }
+        switch (opt) {
+        case 1:
+            show_available_dungeons_based_on_hunters_level(huntshm->level);
+            break;
+        case 2:
+            conquer_raidable_dungeons_based_on_hunters_level(huntshm, huntid);
+            break;
+        case 3:
+            if (battle_other_hunters_based_on_stats(huntshm, huntid) == 1) {
+                return;
+            }
+            break;
+        case 4:
+            tututitutut_toggle = tututitutut_toggle ? 0 : 1;
+            fprintf(stdout, tututitutut_toggle ? "Notifications turned on!\n" : "Notifications turned off!\n");
+            sleep(3);
+            break;
+        case 5:
+            break;
+        default:
+            fprintf(stderr, "Error: Unknown Option\n");
+            sleep(3);
+        }
+    } while (opt != 5);
+    return;
+}
+```
+
+Dimana langkah implementasinya:
+
+```c
+void login_menu_for_logged_in_hunters(struct Hunter *huntshm, int huntid) {
+	...
+}
+```
+1. Mendeklarasikan function `login_menu_for_logged_in_hunters()` dengan ketentuan:
+- `struct Hunter *huntshm`: struktur Hunter yang terhubung pada segmen shared memory khusus untuk hunter lama yang hendak login.
+- `int huntid`: urutan registrasi hunter dalam sistem.
+
+```c
+int opt, tututitutut_toggle = 0;
+```
+2. Mendeklarasikan variabel, dimana:
+- `opt`: untuk menyimpan data opsi yang dipilih oleh user saat di dalam menu program `hunter`.
+- `tututitutut_toggle`: untuk menyimpan data status sistem kendali notifikasi hunter apakah dinyalakan atau tidak.
+
+```c
+do {
+    ...    
+} while (opt != 5);
+```
+3. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada user selama user tidak memilih opsi kelima yang mengembalikan user ke halaman awal program `hunter`.
+
+```c
+fprintf(stdout, "\e[H\e[2J\e[3J");
+```
+4. Membersihkan layar terminal. Memiliki peran yang sama layaknya command `clear`.
+
+```c
+fprintf(stdout, "=== HUNTER SYSTEM ===\n");
+...
+fprintf(stdout, "===%s's MENU ===\n1. List Dungeon\n2. Raid\n3. Battle\n4. Toggle Notification\n5. Exit\nChoice: ", huntshm->username);
+```
+5. Mengoutput UI ke layar terminal yang menampilkan pilihan opsi yang dapat diplih oleh user.
+
+```c
+if (tututitutut_toggle && sys->num_dungeons > 0) {
+	if (sys->current_notification_index >= sys->num_dungeons) {
+		sys->current_notification_index = 0;
+	}
+	struct Dungeon *davail = &sys->dungeons[sys->current_notification_index++];
+	fprintf(stdout, "%s for minimum level %d opened!\n", davail->name, davail->min_level);
+}
+else {
+	fprintf(stdout, "\n");
+}
+```
+6.  Merupakan bagian dari subsoal 4.K: Tututitutut Toggle.
+
+```c
+if (scanf("%d", &opt) != 1) {
+    opt = -1;
+    while (getchar() != '\n');
+}
+```
+7. Mencoba untuk mendapatkan input dari user dalam bentuk integer. Apabila user menginput suatu karakter yang bukan merupakan suatu integer, maka opsi akan diinsialisasi dengan `-1` dan membersihkan buffer input dari karakter yang tidak sesuai tersebut.
+
+```c
+switch (opt) {
+case 1:
+    show_available_dungeons_based_on_hunters_level(huntshm->level);
+    break;
+case 2:
+    conquer_raidable_dungeons_based_on_hunters_level(huntshm, huntid);
+    break;
+case 3:
+    if (battle_other_hunters_based_on_stats(huntshm, huntid) == 1) {
+	return;
+    }
+    break;
+case 4:
+    tututitutut_toggle = tututitutut_toggle ? 0 : 1;
+    fprintf(stdout, tututitutut_toggle ? "Notifications turned on!\n" : "Notifications turned off!\n");
+    sleep(3);
+    break;
+case 5:
+    break;
+default:
+    fprintf(stderr, "Error: Unknown Option\n");
+    sleep(3);
+}
+```
+8. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh user pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, 3, 4, atau 5 maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke user dan memberikan jeda tiga detik agar user dapat membaca error tersebut. Khusus untuk opsi keempat, program tidak akan diarahkan ke function yang sesuai, namun hanya mengatur sistem kendali yang merupakan bagian dari subsoal 4.K: Tututitutut Toggle.
+
+```c
+return;
+```
+9. Jika user memilih opsi kelima, maka do-while loop akan berhenti. Setelah itu, function yang tertera pada function `login_menu_for_logged_in_hunters()` dinyatakan berhasil dieksekusi dan user diarahkan kembali ke halaman awal.
