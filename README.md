@@ -241,8 +241,10 @@ int main(int argc, char *argv[]) {
 ## • Soal  3
 
 ## • Soal  4: Hunters System
+
 ### • Pendahuluan
-Soal 4 terdiri dari dua program yaitu `hunter.c` dan `system.c` yang berbagi data antara satu dengan yang lainnya menggunakan mekanisme shared memory. Soal ini terdiri dari dua belas subsoal dimana sebelas subsoal pertama kita diperintahkan untuk menambahkan fitur pada sistem tracking hunter tersebut, sedangkan subsoal terakhir memerintahkan kita untuk membuat agar data pada shared memory tidak mengalami kebocoran. Adapun program `hunter` dan `system` menggunakan header file `shm_common.h` dalam pengoperasiannya untuk dapat berjalan, dimana tampilannya adalah sebagai berikut:
+
+Soal 4 terdiri dari dua program yaitu `hunter.c` dan `system.c` yang berbagi data antara satu dengan yang lainnya menggunakan mekanisme shared memory. Soal ini terdiri dari dua belas subsoal dimana sebelas subsoal pertama kita diperintahkan untuk menambahkan fitur pada sistem tracking hunter tersebut, sedangkan subsoal terakhir memerintahkan kita untuk membuat agar data pada segmen shared memory tersebut tidak mengalami kebocoran. Adapun program `hunter` dan `system` menggunakan header file `shm_common.h` dalam pengoperasiannya untuk dapat berjalan, dimana tampilannya adalah sebagai berikut:
 
 ```c
 #ifndef SHM_COMMON_H
@@ -304,35 +306,38 @@ Dimana penjelasan untuk setiap preprocessor yang secara spesifik digunakan pada 
 #include <stdio.h>
 ```
 1. Menyediakan elemen dari standard I/O yang berkaitan dengan fungsi menampilkan error menggunakan stderr, menampilkan output ke terminal menggunakan stdout, dan memanipulasi file. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<stdio.h>` adalah: `fprintf()`, macro `stderr`, macro `stdout`, struct `FILE`, `fopen()`, `snprintf()`, `fclose()`, `getchar()`, dan `scanf()`.
+
 ```c
 #include <stdlib.h>
 ```
 2. Menyediakan elemen dari standard library yang berkaitan dengan fungsi konversi tipe data dan manajemen control process. Adapun elemen yang digunakan program `hunter` dan `system` yang berkaitan dengan file header `<stdlib.h>` adalah: `exit()`, macro `EXIT_FAILURE`, macro `EXIT_SUCCESS`, `rand()`, dan `srand()`.
 
 ```c
-```c
 #include <string.h>
 ```
 3. Menyediakan elemen yang berkaitan dengan fungsi memanipulasi tipe data `string`. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<string.h>` adalah: `strcmp()`, `strncpy()`, dan `memcpy()`.
 
 ```c
-```c
 #include <sys/ipc.h>
 ```
 4. Menyediakan elemen yang berkaitan dengan interprocess communication atau IPC. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<sys/ipc.h>` adalah: `ftok()`.
+
 ```c
 #include <sys/shm.h>
 ```
-5. Menyediakan elemen yang berkaitan dengan proses pertukaran data menggunakan shared memory. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<sys/ipc.h>` adalah: `shmget()`, `shmat()`, `shmdt()`, dan `shmctl()`.
+5. Menyediakan elemen yang berkaitan dengan proses mengakses data menggunakan mekanisme shared memory. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<sys/ipc.h>` adalah: `shmget()`, `shmat()`, `shmdt()`, dan `shmctl()`.
+
 ```c
 #include <unistd.h>
 ```
 6. Menyediakan elemen dari standard UNIX yang berkaitan dengan fungsi berinteraksi langsung dengan operating system. Adapun elemen yang digunakan pada program `hunter` dan `system` yang berkaitan dengan file header `<unistd.h>` adalah: `sleep()`.
+
 ```c
 #define MAX_HUNTERS 50
 #define MAX_DUNGEONS 50
 ```
 7. Mendefinisikan macros `MAX_HUNTERS` dan `MAX_DUNGEONS` yang merepresentasikan limit banyaknya individual dungeon dan hunters pada sistem.
+
 ```c
 struct Hunter {
     char username[50];
@@ -345,7 +350,8 @@ struct Hunter {
     key_t shm_key;
 };
 ```
-8. Mendeklarasikan struktur Hunter beserta data yang berkaitan dengannya seperti status level, exp, attack, hitpoints, defense, dan key khusus untuk mengakses data hunter di shared memory yang spesifik untuk hunter tersebut. Selain itu, struktur Hunter juga menyimpan status apakah suatu hunter diblokir oleh sistem atau tidak.
+8. Mendeklarasikan struktur Hunter beserta data yang berkaitan dengannya seperti status level, exp, attack, hitpoints, defense, dan key khusus untuk mengakses data hunter di segmen shared memory yang spesifik untuk hunter tersebut. Selain itu, struktur Hunter juga menyimpan status apakah suatu hunter diblokir oleh sistem atau tidak.
+
 ```c
 struct Dungeon {
     char name[50];
@@ -357,7 +363,8 @@ struct Dungeon {
     key_t shm_key;
 };
 ```
-9. Mendeklarasikan struktur Dungeon beserta data yang berkaitan dengannya seperti status level, exp, attack, hitpoints, defense, dan key khusus untuk mengakses data dungeon di shared memory yang spesifik untuk dungeon tersebut.
+9. Mendeklarasikan struktur Dungeon beserta data yang berkaitan dengannya seperti status level, exp, attack, hitpoints, defense, dan key khusus untuk mengakses data dungeon di segmen shared memory yang spesifik untuk dungeon tersebut.
+
 ```c
 struct SystemData {
     struct Hunter hunters[MAX_HUNTERS];
@@ -368,12 +375,13 @@ struct SystemData {
 };
 ```
 10. Mendeklarasikan struktur SystemData beserta data yang berkaitan dengannya seperti array yang berisi data semua hunter dan dungeon yang terdaftar dalam sistem, jumlah hunter dan dungeon yang terdapat pada sistem, serta indeks untuk menyimpan data mengenai sistem kendali notifikasi setiap hunter.
+
 ```c
 key_t get_system_key() {
     return ftok("/tmp", 'S');
 }
 ```
-11. Merupakan function untuk membuat kunci sistem yang digunakan dalam proses pertukaran data menggunakan shared memory.
+11. Merupakan function untuk membuat key sistem yang digunakan dalam proses mengakses data menggunakan mekanisme shared memory.
 
 ### • Soal  4.A: Pengantar `hunter.c` dan `system.c`
 
@@ -433,7 +441,7 @@ if (huntfile == NULL) {
     exit(EXIT_FAILURE);
 }
 ```
-2. Membuat file `/tmp/hunter` jika tidak ada yang digunakan dalam proses membuat key dengan konversi pathname ke dalam sebuah key yang digunakan untuk mengakses shared memory yang khusus untuk setiap hunter menggunakan function `ftok()`. Apabila tidak ditemukan atau tidak dapat membuka `/tmp/hunter`, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+2. Membuat file `/tmp/hunter` jika tidak ada yang digunakan dalam proses membuat key dengan konversi pathname ke dalam sebuah key yang digunakan untuk mengakses segmen shared memory yang khusus untuk setiap hunter menggunakan function `ftok()`. Apabila tidak ditemukan atau tidak dapat membuka `/tmp/hunter`, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
 
 ```c
 fclose(huntfile);
@@ -486,12 +494,12 @@ default:
     sleep(3);
 }
 ```
-8. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh user pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, dan 3, maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke user dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
+8. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh user pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, atau 3, maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke user dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
 
 ```c
 exit(EXIT_SUCCESS);
 ```
-9. Setelah user memilih opsi ketiga, maka program dinyatakan berhasil dieksekusi dan keluar.
+9. Jika user memilih opsi ketiga, maka do-while loop akan berhenti. Setelah itu, program dinyatakan berhasil dieksekusi dan keluar.
 
 #### b. Soal 4.A.2: `system.c`
 
@@ -577,3 +585,144 @@ int main() {
 ```
 
 Dimana langkah implementasinya:
+
+```c
+int main() {
+	...
+}
+```
+1. Merupakan deklarasi function `main()`.
+
+```c
+srand(time(NULL));
+```
+2. Menginisialisasi proses seeding suatu angka pseudo-random yang nantinya akan digunakan oleh function `rand()`.
+
+```c
+FILE *dngnfile = fopen("/tmp/dungeon", "a");
+if (dngnfile == NULL) {
+	fprintf(stderr, "Error: Cannot create /tmp/dungeon\n");
+	exit(EXIT_FAILURE);
+}
+```
+3. Membuat file `/tmp/dungeon` jika tidak ada yang digunakan dalam proses membuat key dengan konversi pathname ke dalam sebuah key yang digunakan untuk mengakses segmen shared memory yang khusus untuk setiap dungeon menggunakan function `ftok()`. Apabila tidak ditemukan atau tidak dapat membuka `/tmp/dungeon`, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+
+```c
+fclose(dngnfile);
+```
+4. Menutup kembali file `/tmp/dungeon`.
+
+```c
+key_t key;
+int shmid;
+```
+5. Mendeklarasikan variabel, dimana:
+- `key`: untuk menyimpan data key utama yang digunakan untuk mengidentifikasi dan mengelola segmen shared memory mana yang akan digunakan bersama oleh program `hunter` dan `system`.
+- `shmid`: untuk menyimpan data mengenai ID segmen shared memory yang digunakan oleh program `hunter` dan `system` untuk mengakses data.
+
+```c
+if ((key = get_system_key()) == -1) {
+	fprintf(stderr, "Error: Fail to create shared memory key\n");
+	exit(EXIT_FAILURE);
+}
+```
+6. Mendapatkan value dari variabel key yang diambil dari function `get_system_key()` yang tertera pada header file. Apabila gagal untuk mendapatkan key-nya, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+
+```c
+if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
+	fprintf(stderr, "Error: Fail to create shared memory\n");
+	exit(EXIT_FAILURE);
+}
+```
+7. Function `shmget()` membuat segmen shared memory dengan key yang telah dibuat dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `shmid`. Jika segmen shared memory dengan key tersebut belum ada, maka akan dibuat segmen shared memory yang baru menggunakan `IPC_CREAT` dengan izin read-write untuk semua user. Jika segmen sudah ada, maka function hanya perlu mengambil ID segmen shared memory yang sudah dibuat sebelumnya. Terakhir, apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+
+```c
+if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
+	fprintf(stderr, "Error: Fail to attach system data to shared memory\n");
+	exit(EXIT_FAILURE);
+}
+```
+8. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program `system` yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+
+```c
+if (sys->num_hunters < 0 || sys->num_hunters > MAX_HUNTERS) {
+	sys->num_hunters = 0;
+	sys->num_dungeons = 0;
+	sys->current_notification_index = 0;
+}
+```
+9. Jika program `system` dijalankan untuk pertama kalinya atau jumlah individual hunters yang terdaftar pada sistem melebihi batas limit, maka program akan menginisialisasi value untuk variabel jumlah hunters dan dungeons, serta indeks notifikasi untuk menyimpan data mengenai sistem kendali notifikasi setiap hunter ke value `0`.
+
+```c
+int opt;
+```
+10. Mendeklarasikan variabel, dimana:
+- `opt`: untuk menyimpan data opsi yang dipilih oleh admin saat menjalankan program `hunter`.
+
+```c
+do {
+    ...    
+} while (opt != 6);
+```
+11. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada user selama admin tidak memilih opsi keenam yang mengeluarkan admin dari program.
+
+```c
+fprintf(stdout, "\e[H\e[2J\e[3J");
+```
+12. Membersihkan layar terminal. Memiliki peran yang sama layaknya command `clear`.
+
+```c
+fprintf(stdout, "=== SYSTEM MENU ===\n1. Hunter Info\n2. Dungeon Info\n3. Generate Dungeon\n4. Ban/Unban Hunter\n5. Reset Hunter\n6. Exit\nChoice: ");
+```
+13. Mengoutput UI ke layar terminal yang menampilkan pilihan opsi yang dapat diplih oleh admin.
+
+```c
+if (scanf("%d", &opt) != 1) {
+    opt = -1;
+    while (getchar() != '\n');
+}
+```
+14. Mencoba untuk mendapatkan input dari admin dalam bentuk integer. Apabila admin menginput suatu karakter yang bukan merupakan suatu integer, maka opsi akan diinsialisasi dengan `-1` dan membersihkan buffer input dari karakter yang tidak sesuai tersebut.
+
+```c
+switch (opt) {
+	case 1:
+		info_of_all_hunters();
+		break;
+	case 2:
+		info_of_all_dungeons();
+		break;
+	case 3:
+		generate_random_dungeons();
+		break;
+	case 4:
+		ban_hunter_because_hunter_bad();
+		break;
+	case 5:
+		reset_the_hunters_stat_back_to_default();
+		break;
+	case 6:
+		break;
+	default:
+		fprintf(stderr, "Error: Unknown Option\n");
+		sleep(3);
+}
+```
+15. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh admin pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, 3, 4, 5, atau 6 maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke admin dan memberikan jeda tiga detik agar admin dapat membaca error tersebut.
+
+```c
+for (int i = 0; i < sys->num_hunters; i++) {
+	shmctl(sys->hunters[i].shm_key, IPC_RMID, NULL);
+}
+for (int i = 0; i < sys->num_dungeons; i++) {
+	shmctl(sys->dungeons[i].shm_key, IPC_RMID, NULL);
+}
+shmdt(sys);
+shmctl(shmid, IPC_RMID, NULL);
+```
+16. Merupakan bagian dari subsoal 4.L: Destruksi Shared Memory.
+
+```c
+exit(EXIT_SUCCESS);
+```
+17. Jika admin memilih opsi keenam, maka do-while loop akan berhenti. Setelah itu, program dinyatakan berhasil dieksekusi dan keluar.
