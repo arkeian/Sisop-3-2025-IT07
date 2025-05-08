@@ -504,6 +504,8 @@ exit(EXIT_SUCCESS);
 #### b. Soal 4.A.2: `system.c`
 
 ```c
+struct SystemData *sys;
+
 int main() {
     srand(time(NULL));
 
@@ -587,16 +589,22 @@ int main() {
 Dimana langkah implementasinya:
 
 ```c
+struct SystemData *sys;
+```
+1. Mendeklarasikan variabel, dimana:
+- `sys`: struktur SystemData yang terhubung pada segmen shared memory utama sistem.
+
+```c
 int main() {
 	...
 }
 ```
-1. Merupakan deklarasi function `main()`.
+2. Merupakan deklarasi function `main()`.
 
 ```c
 srand(time(NULL));
 ```
-2. Menginisialisasi proses seeding suatu angka pseudo-random yang nantinya akan digunakan oleh function `rand()`.
+3. Menginisialisasi proses seeding suatu angka pseudo-random yang nantinya akan digunakan oleh function `rand()`.
 
 ```c
 FILE *dngnfile = fopen("/tmp/dungeon", "a");
@@ -605,18 +613,18 @@ if (dngnfile == NULL) {
 	exit(EXIT_FAILURE);
 }
 ```
-3. Membuat file `/tmp/dungeon` jika tidak ada yang digunakan dalam proses membuat key dengan konversi pathname ke dalam sebuah key yang digunakan untuk mengakses segmen shared memory yang khusus untuk setiap dungeon menggunakan function `ftok()`. Apabila tidak ditemukan atau tidak dapat membuka `/tmp/dungeon`, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+4. Membuat file `/tmp/dungeon` jika tidak ada yang digunakan dalam proses membuat key dengan konversi pathname ke dalam sebuah key yang digunakan untuk mengakses segmen shared memory yang khusus untuk setiap dungeon menggunakan function `ftok()`. Apabila tidak ditemukan atau tidak dapat membuka `/tmp/dungeon`, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
 
 ```c
 fclose(dngnfile);
 ```
-4. Menutup kembali file `/tmp/dungeon`.
+5. Menutup kembali file `/tmp/dungeon`.
 
 ```c
 key_t key;
 int shmid;
 ```
-5. Mendeklarasikan variabel, dimana:
+6. Mendeklarasikan variabel, dimana:
 - `key`: untuk menyimpan data key utama yang digunakan untuk mengidentifikasi dan mengelola segmen shared memory mana yang akan digunakan bersama oleh program `hunter` dan `system`.
 - `shmid`: untuk menyimpan data mengenai ID segmen shared memory yang digunakan oleh program `hunter` dan `system` untuk mengakses data.
 
@@ -626,7 +634,7 @@ if ((key = get_system_key()) == -1) {
 	exit(EXIT_FAILURE);
 }
 ```
-6. Mendapatkan value dari variabel key yang diambil dari function `get_system_key()` yang tertera pada header file. Apabila gagal untuk mendapatkan key-nya, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+7. Mendapatkan value dari variabel key yang diambil dari function `get_system_key()` yang tertera pada header file. Apabila gagal untuk mendapatkan key-nya, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
 
 ```c
 if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
@@ -634,7 +642,7 @@ if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
 	exit(EXIT_FAILURE);
 }
 ```
-7. Function `shmget()` membuat segmen shared memory dengan key yang telah dibuat dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `shmid`. Jika segmen shared memory dengan key tersebut belum ada, maka akan dibuat segmen shared memory yang baru menggunakan `IPC_CREAT` dengan izin read-write untuk semua user. Jika segmen sudah ada, maka function hanya perlu mengambil ID segmen shared memory yang sudah dibuat sebelumnya. Terakhir, apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+8. Function `shmget()` membuat segmen shared memory dengan key yang telah dibuat dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `shmid`. Jika segmen shared memory dengan key tersebut belum ada, maka akan dibuat segmen shared memory yang baru menggunakan `IPC_CREAT` dengan izin read-write untuk semua user. Jika segmen sudah ada, maka function hanya perlu mengambil ID segmen shared memory yang sudah dibuat sebelumnya. Terakhir, apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
 
 ```c
 if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
@@ -642,7 +650,7 @@ if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
 	exit(EXIT_FAILURE);
 }
 ```
-8. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+9. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
 
 ```c
 if (sys->num_hunters < 0 || sys->num_hunters > MAX_HUNTERS) {
@@ -651,12 +659,12 @@ if (sys->num_hunters < 0 || sys->num_hunters > MAX_HUNTERS) {
 	sys->current_notification_index = 0;
 }
 ```
-9. Jika program `system` dijalankan untuk pertama kalinya atau jumlah individual hunters yang terdaftar pada sistem melebihi batas limit, maka program akan menginisialisasi value untuk variabel jumlah hunters dan dungeons, serta indeks notifikasi untuk menyimpan data mengenai sistem kendali notifikasi setiap hunter ke value `0`.
+10. Jika program `system` dijalankan untuk pertama kalinya atau jumlah individual hunters yang terdaftar pada sistem melebihi batas limit, maka program akan menginisialisasi value untuk variabel jumlah hunters dan dungeons, serta indeks notifikasi untuk menyimpan data mengenai sistem kendali notifikasi setiap hunter ke value `0`.
 
 ```c
 int opt;
 ```
-10. Mendeklarasikan variabel, dimana:
+11. Mendeklarasikan variabel, dimana:
 - `opt`: untuk menyimpan data opsi yang dipilih oleh admin saat menjalankan program `hunter`.
 
 ```c
@@ -664,17 +672,17 @@ do {
     ...    
 } while (opt != 6);
 ```
-11. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada admin selama admin tidak memilih opsi keenam yang mengeluarkan admin dari program.
+12. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada admin selama admin tidak memilih opsi keenam yang mengeluarkan admin dari program.
 
 ```c
 fprintf(stdout, "\e[H\e[2J\e[3J");
 ```
-12. Membersihkan layar terminal. Memiliki peran yang sama layaknya command `clear`.
+13. Membersihkan layar terminal. Memiliki peran yang sama layaknya command `clear`.
 
 ```c
 fprintf(stdout, "=== SYSTEM MENU ===\n1. Hunter Info\n2. Dungeon Info\n3. Generate Dungeon\n4. Ban/Unban Hunter\n5. Reset Hunter\n6. Exit\nChoice: ");
 ```
-13. Mengoutput UI ke layar terminal yang menampilkan pilihan opsi yang dapat diplih oleh admin.
+14. Mengoutput UI ke layar terminal yang menampilkan pilihan opsi yang dapat diplih oleh admin.
 
 ```c
 if (scanf("%d", &opt) != 1) {
@@ -682,7 +690,7 @@ if (scanf("%d", &opt) != 1) {
     while (getchar() != '\n');
 }
 ```
-14. Mencoba untuk mendapatkan input dari admin dalam bentuk integer. Apabila admin menginput suatu karakter yang bukan merupakan suatu integer, maka opsi akan diinsialisasi dengan `-1` dan membersihkan buffer input dari karakter yang tidak sesuai tersebut.
+15. Mencoba untuk mendapatkan input dari admin dalam bentuk integer. Apabila admin menginput suatu karakter yang bukan merupakan suatu integer, maka opsi akan diinsialisasi dengan `-1` dan membersihkan buffer input dari karakter yang tidak sesuai tersebut.
 
 ```c
 switch (opt) {
@@ -708,7 +716,7 @@ switch (opt) {
 		sleep(3);
 }
 ```
-15. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh admin pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, 3, 4, 5, atau 6 maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke admin dan memberikan jeda tiga detik agar admin dapat membaca error tersebut.
+16. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh admin pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, 3, 4, 5, atau 6 maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke admin dan memberikan jeda tiga detik agar admin dapat membaca error tersebut.
 
 ```c
 for (int i = 0; i < sys->num_hunters; i++) {
@@ -720,12 +728,12 @@ for (int i = 0; i < sys->num_dungeons; i++) {
 shmdt(sys);
 shmctl(shmid, IPC_RMID, NULL);
 ```
-16. Merupakan bagian dari subsoal 4.L: Destruksi Shared Memory.
+17. Merupakan bagian dari subsoal 4.L: Destruksi Shared Memory.
 
 ```c
 exit(EXIT_SUCCESS);
 ```
-17. Jika admin memilih opsi keenam, maka do-while loop akan berhenti. Setelah itu, program dinyatakan berhasil dieksekusi dan keluar.
+18. Jika admin memilih opsi keenam, maka do-while loop akan berhenti. Setelah itu, program dinyatakan berhasil dieksekusi dan keluar.
 
 ### • Soal  4.B: Registrasi dan Login Hunter
 
@@ -1298,3 +1306,86 @@ default:
 return;
 ```
 9. Jika user memilih opsi kelima, maka do-while loop akan berhenti. Setelah itu, function yang tertera pada function `login_menu_for_logged_in_hunters()` dinyatakan berhasil dieksekusi dan user diarahkan kembali ke halaman awal.
+
+### • Soal  4.C: Informasi Hunter
+
+Pada subsoal 4.C: Informasi Hunter, kita diperintahkan untuk membuat sebuah program untuk melihat daftar user yang teregistrasi dan tersimpan pada program `system`. Untuk membuat program ini dibuatlah suatu function bernama `info_of_all_hunters()`, dengan tampilan sebagai berikut:
+
+```c
+void info_of_all_hunters() {
+    if (sys->num_hunters == 0) {
+        fprintf(stderr, "\nNo hunters registered yet\n");
+        sleep(3);
+        return;
+    }
+    else {
+        fprintf(stdout, "\n=== HUNTER INFO ===\n");
+        for (int i = 0; i < sys->num_hunters; i++) {
+            struct Hunter *hunt = &sys->hunters[i];
+            fprintf(stdout, "Name: %-49s Level: %-3d EXP: %-3d ATK: %-3d HP: %-3d DEF: %-3d Banned: %-3s Key: %d\n",
+                    hunt->username,
+                    hunt->level,
+                    hunt->exp,
+                    hunt->atk,
+                    hunt->hp,
+                    hunt->def,
+                    (hunt->banned ? "Yes" : "No"),
+                    hunt->shm_key
+                    );
+        }
+    }
+    fprintf(stdout, "\nPress Enter key to return to menu");
+    while (getchar()!='\n');
+    getchar();
+}
+```
+
+Dimana langkah implementasinya:
+
+```c
+void info_of_all_hunters() {
+	...
+}
+```
+1. Mendeklarasikan function `info_of_all_hunters()`.
+
+```c
+if (sys->num_hunters == 0) {
+	fprintf(stderr, "\nNo hunters registered yet\n");
+	sleep(3);
+	return;
+}
+```
+2. Memastikan bahwa setidaknya terdapat satu hunter yang terdaftar pada sistem. Apabila terindikasi bahwa tidak terdapat hunter yang teregistrasi, maka program akan kembali ke halaman awal setelah melempar sebuah error ke stderr yang akan ditampilkan ke user dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
+
+```c
+else {
+        fprintf(stdout, "\n=== HUNTER INFO ===\n");
+	...
+}
+```
+3. Menampilkan UI berupa header ke layar terminal.
+
+```c
+for (int i = 0; i < sys->num_hunters; i++) {
+    struct Hunter *hunt = &sys->hunters[i];
+    fprintf(stdout, "Name: %-49s Level: %-3d EXP: %-3d ATK: %-3d HP: %-3d DEF: %-3d Banned: %-3s Key: %d\n",
+	    hunt->username,
+	    hunt->level,
+	    hunt->exp,
+	    hunt->atk,
+	    hunt->hp,
+	    hunt->def,
+	    (hunt->banned ? "Yes" : "No"),
+	    hunt->shm_key
+	    );
+}
+```
+4. Merupakan suatu for-loop yang mengiterasi terhadap setiap hunter yang tersimpan pada struktur Hunter yang terhubung pada segmen shared memory utama dan menampilkan username dan status setiap hunter tersebut ke layar terminal.
+
+```c
+fprintf(stdout, "\nPress Enter key to return to menu");
+while (getchar()!='\n');
+getchar();
+```
+5. Merupakan suatu fitur untuk menunggu user menekan Enter key agar program `system` kembali ke halaman awal. Digunakan agar user dapat membaca tampilan informasi hunter tanpa perlu mempertimbangkan constraint waktu yang diterapkan oleh function `sleep()`.
