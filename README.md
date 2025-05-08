@@ -1909,6 +1909,472 @@ void generate_random_dungeons() {
 }
 ```
 
+### • Soal  4.E: Informasi Dungeon
+
+Pada subsoal 4.C: Informasi Dungeon, kita diperintahkan untuk membuat sebuah program untuk melihat daftar dungeon yang telah di-generate dan tersimpan pada program `system`. Untuk membuat program ini dibuatlah suatu function bernama `info_of_all_dungeons()`, dengan tampilan sebagai berikut:
+
+```c
+void info_of_all_dungeons() {
+    if (sys->num_dungeons == 0) {
+        fprintf(stderr, "\nNo dungeons have yet to be generated\n");
+        sleep(3);
+        return;
+    }
+    else {
+        fprintf(stdout, "\n=== DUNGEON INFO ===\n");
+        for (int i = 0; i < sys->num_dungeons; i++) {
+            struct Dungeon *dngn = &sys->dungeons[i];
+            fprintf(stdout, "[Dungeon %d]\n", i + 1);
+            fprintf(stdout, "Name: %-49s\nMinimum Level: %-3d\nEXP Reward: %-3d\nATK: %-3d\nHP: %-3d\nDEF: %-3d\nKey: %d\n\n",
+                    dngn->name,
+                    dngn->min_level,
+                    dngn->exp,
+                    dngn->atk,
+                    dngn->hp,
+                    dngn->def,
+                    dngn->shm_key);
+        }
+    }
+    fprintf(stdout, "\nPress Enter key to return to menu");
+    while (getchar()!='\n');
+    getchar();
+}
+```
+
+### • Soal  4.F: Appropiate Dungeon
+
+Pada subsoal 4.F: Appropiate Dungeon, kita diperintahkan untuk membuat sebuah program untuk melihat daftar dungeon yang sesuai dengan level hunter dan dapat dlakukan proses raid pada program `hunter`. Untuk membuat program ini dibuatlah suatu function bernama `show_available_dungeons_based_on_hunters_level()`, dengan tampilan sebagai berikut:
+
+```c
+void show_available_dungeons_based_on_hunters_level(int huntlvl) {
+    int dshmid;
+    int lsid = 0;
+    fprintf(stdout, "\n=== AVAILABLE DUNGEONS ===\n");
+    for (int i = 0; i < sys->num_dungeons; i++) {
+        struct Dungeon *dngn = &sys->dungeons[i];
+        if ((dshmid = shmget(dngn->shm_key, sizeof(struct Dungeon), 0666)) == -1) {
+            fprintf(stderr, "Error: Fail to get shared memory for the list of dungeons\n");
+            sleep(3);
+            return;
+        }
+        
+        struct Dungeon *dngnshm;
+        if ((dngnshm = shmat(dshmid, NULL, 0)) == (void *)-1) {
+            fprintf(stderr, "Error: Fail to attach dungeon's shared memory\n");
+            sleep(3);
+            return;
+        }
+
+        if (dngnshm->min_level <= huntlvl) {
+            fprintf(stdout, "%2d. %-49s (Level %d+) %d\n", ++lsid, dngnshm->name, dngnshm->min_level, huntlvl);
+        }
+
+        shmdt(dngnshm);
+    }
+    if (!lsid) {
+        fprintf(stdout, "No dungeons available for level %d\n", huntlvl);
+    }
+    fprintf(stdout, "\nPress Enter key to return to menu");
+    while (getchar()!='\n');
+    getchar();
+}
+```
+
+### • Soal  4.G: Dungeon Raid
+
+Pada subsoal 4.G: Dungeon Raid, kita diperintahkan untuk membuat sebuah program untuk melakukan raid dengan memilih sebuah dungeon dari daftar dungeon yang memiliki level sesuai dengan level hunter. Untuk membuat program ini dibuatlah suatu function bernama `conquer_raidable_dungeons_based_on_hunters_level()`, dengan tampilan sebagai berikut:
+
+```c
+void conquer_raidable_dungeons_based_on_hunters_level(struct Hunter *huntshm, int huntid) {
+    if (huntshm->banned) {
+        fprintf(stderr, "\nError: You are banned from engaging in battles or raids\n");
+        sleep(3);
+        return;
+    }
+    int dshmid;
+    int lsid = 0;
+    int raidable[MAX_DUNGEONS];
+    fprintf(stdout, "\n=== RAIDABLE DUNGEONS ===\n");
+    for (int i = 0; i < sys->num_dungeons; i++) {
+        struct Dungeon *dngn = &sys->dungeons[i];
+        if ((dshmid = shmget(dngn->shm_key, sizeof(struct Dungeon), 0666)) == -1) {
+            fprintf(stderr, "Error: Fail to get shared memory for the list of dungeons\n");
+            sleep(3);
+            return;
+        }
+        
+        struct Dungeon *dngnshm;
+        if ((dngnshm = shmat(dshmid, NULL, 0)) == (void *)-1) {
+            fprintf(stderr, "Error: Fail to attach dungeon's shared memory\n");
+            sleep(3);
+            return;
+        }
+
+        if (dngnshm->min_level <= huntshm->level) {
+            raidable[lsid] = i;
+            fprintf(stdout, "%2d. %-49s (Level %d+)\n", ++lsid, dngnshm->name, dngnshm->min_level);
+        }
+
+        shmdt(dngnshm);
+    }
+    if (!lsid) {
+        fprintf(stdout, "No dungeons available for level %d\n", huntshm->level);
+        fprintf(stdout, "\nPress Enter key to return to menu");
+        while (getchar()!='\n');
+        getchar();
+        return;
+    }
+    else {
+        int opt;
+        fprintf(stdout, "Choose Dungeon: ");
+        if (scanf("%d", &opt) != 1 || opt < 1 || opt > lsid) {
+            while (getchar() != '\n');
+            fprintf(stderr, "Error: Unknown Option\n");
+            sleep(3);
+            return;
+        }
+
+        struct Dungeon *targ = &sys->dungeons[raidable[opt - 1]];
+        if ((dshmid = shmget(targ->shm_key, sizeof(struct Dungeon), 0666)) == -1) {
+            fprintf(stderr, "Error: Fail to get shared memory for target dungeon\n");
+            sleep(3);
+            return;
+        }
+        
+        struct Dungeon *dngnshm;
+        if ((dngnshm = shmat(dshmid, NULL, 0)) == (void *)-1) {
+            fprintf(stderr, "Error: Fail to attach dungeon's shared memory\n");
+            sleep(3);
+            return;
+        }
+
+        fprintf(stdout, "Raid success! Gained:\nATK: %-3d\nHP: %-3d\nDEF: %-3d\nEXP: %-3d\n", dngnshm->atk, dngnshm->hp, dngnshm->def, dngnshm->exp);
+        huntshm->atk += dngnshm->atk;
+        huntshm->def += dngnshm->def;
+        huntshm->hp += dngnshm->hp;
+        huntshm->exp += dngnshm->exp;
+
+        if (huntshm->exp >= 500) {
+            huntshm->exp -= 500;
+            huntshm->level++;
+            fprintf(stdout, "%s leveled up!\n", huntshm->username);
+        }
+
+        memcpy(&sys->hunters[huntid], huntshm, sizeof(struct Hunter));
+
+        shmctl(targ->shm_key, IPC_RMID, NULL);
+        sys->dungeons[raidable[opt - 1]] = sys->dungeons[--sys->num_dungeons];
+        shmdt(dngnshm);
+
+        fprintf(stdout, "\nPress Enter key to return to menu");
+        while (getchar()!='\n');
+        getchar();
+    }
+}
+```
+
+### • Soal  4.H: Hunters Waging War
+
+Pada subsoal 4.H: Hunters Waging War, kita diperintahkan untuk membuat sebuah program untuk melakukan pertarungan antara satu hunter dengan yang lain dengan kemenangan berdasarkan kekuatan dari masing-masing hunter. Untuk membuat program ini dibuatlah suatu function bernama `battle_other_hunters_based_on_stats()`, dengan tampilan sebagai berikut:
+
+```c
+int battle_other_hunters_based_on_stats(struct Hunter *huntshm, int huntid) {
+    if (huntshm->banned) {
+        fprintf(stderr, "\nError: You are banned from engaging in battles or raids\n");
+        sleep(3);
+        return 0;
+    }
+    if (sys->num_hunters < 2) {
+        fprintf(stdout, "Can't battle. No other hunters to battle\n");
+        sleep(3);
+        return 0;
+    }
+    int hshmid;
+    fprintf(stdout, "\n=== PVP LIST ===\n");
+    for (int i = 0; i < sys->num_hunters; i++) {
+        if (i == huntid) {
+            continue;
+        }
+        else {
+            struct Hunter *foe = &sys->hunters[i];
+            if ((hshmid = shmget(foe->shm_key, sizeof(struct Hunter), 0666)) == -1) {
+                fprintf(stderr, "Error: Fail to get shared memory for the list of hunters\n");
+                sleep(3);
+                return 1;
+            }
+            
+            struct Hunter *foeshm;
+            if ((foeshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+                fprintf(stderr, "Error: Fail to attach list of foe's shared memory\n");
+                sleep(3);
+                return 1;
+            }
+            int foestat = foeshm->atk + foeshm->def + foeshm->hp;
+            fprintf(stdout, "%s - Total Power: %d\n", foeshm->username, foestat);
+
+            shmdt(foeshm);
+        }
+    }
+    char targ[50];
+    fprintf(stdout, "Target: ");
+    scanf("%49s", targ);
+    while (getchar() != '\n');
+
+    int targid = -1;
+    for (int i = 0; i < sys->num_hunters; i++) {
+        if (i == huntid) {
+            continue;
+        }
+        if (!strcmp(sys->hunters[i].username, targ)) {
+            targid = i;
+            break;
+        }
+    }
+
+    if (targid == -1) {
+        fprintf(stdout, "Battle not initiated. No hunter with that username\n");
+        sleep(3);
+        return 0;
+    }
+    
+    struct Hunter *targg = &sys->hunters[targid];
+    if ((hshmid = shmget(targg->shm_key, sizeof(struct Hunter), 0666)) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory for the targeted hunter\n");
+        sleep(3);
+        return 0;
+    }
+    
+    struct Hunter *targgshm;
+    if ((targgshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach list of target's shared memory\n");
+        sleep(3);
+        return 0;
+    }
+
+    int huntstat = huntshm->atk + huntshm->def + huntshm->hp;
+    int targgstat = targgshm->atk + targgshm->def + targgshm->hp;
+    fprintf(stdout, "You choose to battle %s\n", targgshm->username);
+    fprintf(stdout, "Your Power: %d\nOpponent's Power: %d\n", huntstat, targgstat);
+
+    if (huntstat > targgstat) {
+        fprintf(stdout, "Deleting defender's shared memory (shmid: %d)\n", targgshm->shm_key);
+        fprintf(stdout, "Battle won! You acquired %s's stats\n", targgshm->username);
+
+        huntshm->atk += targgshm->atk;
+        huntshm->def += targgshm->def;
+        huntshm->hp += targgshm->hp;
+        huntshm->exp += targgshm->exp;
+
+        if (huntshm->exp >= 500) {
+            huntshm->exp -= 500;
+            huntshm->level++;
+            fprintf(stdout, "%s leveled up!\n", huntshm->username);
+        }
+        
+
+        memcpy(&sys->hunters[huntid], huntshm, sizeof(struct Hunter));
+
+        shmctl(targgshm->shm_key, IPC_RMID, NULL);
+        sys->hunters[targid] = sys->hunters[--sys->num_hunters];
+        shmdt(targgshm);
+        
+    }
+    else {
+        fprintf(stdout, "Deleting YOUR shared memory (shmid: %d)\n", huntshm->shm_key);
+        fprintf(stdout, "Battle lost! %s acquired your stats\n", targgshm->username);
+
+        targgshm->atk += huntshm->atk;
+        targgshm->def += huntshm->def;
+        targgshm->hp += huntshm->hp;
+        targgshm->exp += huntshm->exp;
+
+        if (targgshm->exp >= 500) {
+            targgshm->exp -= 500;
+            targgshm->level++;
+            fprintf(stdout, "%s leveled up!\n", targgshm->username);
+        }
+        
+
+        memcpy(&sys->hunters[targid], targgshm, sizeof(struct Hunter));
+
+        shmctl(huntshm->shm_key, IPC_RMID, NULL);
+        sys->hunters[huntid] = sys->hunters[--sys->num_hunters];
+        shmdt(huntshm);
+        shmdt(targgshm);
+        sleep(5);
+        return 1;
+    }
+
+    fprintf(stdout, "\nPress Enter key to return to menu");
+    while (getchar()!='\n');
+    getchar();
+    return 0;
+}
+```
+
+### • Soal  4.I: Hunters Gatekeeping
+
+Pada subsoal 4.I: Hunters Gatekeeping, kita diperintahkan untuk membuat sebuah program untuk dapat melakukan pemblokiran ataupun mengangkat blokir tersebut terhadap suatu hunter. Untuk membuat program ini dibuatlah suatu function bernama `ban_hunter_because_hunter_bad()`, dengan tampilan sebagai berikut:
+
+```c
+void ban_hunter_because_hunter_bad() {
+    char username[50];
+    fprintf(stdout, "Target: ");
+    scanf("%49s", username);
+    while (getchar() != '\n');
+
+    int hshmid;
+    int exist = 0;
+    for (int i = 0; i < sys->num_hunters; i++) {
+        struct Hunter *hunt = &sys->hunters[i];
+        if (!strcmp(username, hunt->username)) {
+            exist = 1;
+
+            if ((hshmid = shmget(hunt->shm_key, sizeof(struct Hunter), 0666)) == -1) {
+                fprintf(stderr, "Error: Fail to get shared memory for the selected hunter\n");
+                exit(EXIT_FAILURE);
+            }
+            
+            struct Hunter *huntshm;
+            if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+                fprintf(stderr, "Error: Fail to attach hunter's shared memory\n");
+                exit(EXIT_FAILURE);
+            }
+
+            if (huntshm->banned) {
+                char decision;
+                fprintf(stdout, "Hunter %s is already banned. Unban?\n(Y/n): ", username);
+                decision = getchar();
+                while (getchar() != '\n');
+
+                if (decision == 'Y' || decision == 'y') {
+                    huntshm->banned = 0;
+                    memcpy(hunt, huntshm, sizeof(struct Hunter));
+                    fprintf(stdout, "Hunter %s has been unbanned\n", username);
+                }
+                else {
+                    fprintf(stdout, "Hunter %s is already banned. Exiting ban/unban sequence\n", username);
+                    shmdt(huntshm);
+                    sleep(3);
+                    return;
+                }
+            }
+            else {
+                huntshm->banned = 1;
+                memcpy(hunt, huntshm, sizeof(struct Hunter));
+                fprintf(stdout, "Hunter %s has been banned\n", username);
+            }
+
+
+            shmdt(huntshm);
+
+            sleep(3);
+            return;
+        }
+    }
+    if (!exist) {
+        fprintf(stderr, "No one is banned/unbanned. No hunter with that username\n");
+        sleep(3);
+        return;
+    }
+}
+```
+
+### • Soal  4.J: Reset Hunters
+
+Pada subsoal 4.J: Reset Hunters, kita diperintahkan untuk membuat sebuah program untuk dapat melakukan reset status suatu hunter ke value default yang telah ditentukan oleh program. Untuk membuat program ini dibuatlah suatu function bernama `reset_the_hunters_stat_back_to_default()`, dengan tampilan sebagai berikut:
+
+```c
+void reset_the_hunters_stat_back_to_default() {
+    char username[50];
+    fprintf(stdout, "Target: ");
+    scanf("%49s", username);
+    while (getchar() != '\n');
+
+    int hshmid;
+    int exist = 0;
+    for (int i = 0; i < sys->num_hunters; i++) {
+        struct Hunter *hunt = &sys->hunters[i];
+        if (!strcmp(username, hunt->username)) {
+            exist = 1;
+            if ((hshmid = shmget(hunt->shm_key, sizeof(struct Hunter), 0666)) == -1) {
+                fprintf(stderr, "Error: Fail to get shared memory for the selected hunter\n");
+                exit(EXIT_FAILURE);
+            }
+            
+
+            struct Hunter *huntshm;
+            if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+                fprintf(stderr, "Error: Fail to attach hunter's shared memory\n");
+                exit(EXIT_FAILURE);
+            }
+
+            huntshm->level = 1;
+            huntshm->exp = 0;
+            huntshm->atk = 10;
+            huntshm->hp = 100;
+            huntshm->def = 5;
+            huntshm->banned = 0;
+
+            memcpy(hunt, huntshm, sizeof(struct Hunter));
+
+            shmdt(huntshm);
+
+            fprintf(stdout, "Hunter %s stats has been resetted to defaults\n", username);
+            sleep(3);
+            return;
+        }
+    }
+    if (!exist) {
+        fprintf(stderr, "Nothing resetted. No hunter with that username\n");
+        sleep(3);
+        return;
+    }
+}
+```
+
+### • Soal  4.K: Tututitutut Toggle
+
+Pada subsoal 4.K: Tututitutut Toggle, kita diperintahkan untuk membuat sebuah program untuk para hunter dapat mengaktifkan dan menonaktifkan sistem kendali notifikasi terhadap terbukanya suatu dungeon baik sesuai dengan level hunter ataupun tidak. Untuk membuat program ini diperbaruilah function bernama `login_menu_for_logged_in_hunters()` untuk dapat mengakomodasi program tersebut, dengan tampilan sebagai berikut:
+
+```c
+if (tututitutut_toggle && sys->num_dungeons > 0) {
+	if (sys->current_notification_index >= sys->num_dungeons) {
+		sys->current_notification_index = 0;
+	}
+	struct Dungeon *davail = &sys->dungeons[sys->current_notification_index++];
+	fprintf(stdout, "%s for minimum level %d opened!\n", davail->name, davail->min_level);
+}
+else {
+	fprintf(stdout, "\n");
+}
+```
+
+Beserta penambahan opsi berikut pada switch-case du function yang sama:
+
+```c
+case 4:
+    tututitutut_toggle = tututitutut_toggle ? 0 : 1;
+    fprintf(stdout, tututitutut_toggle ? "Notifications turned on!\n" : "Notifications turned off!\n");
+    sleep(3);
+    break;
+```
+
+### • Soal  4.L: Destruksi Shared Memory
+
+Pada subsoal 4.L: Destruksi Shared Memory, kita diperintahkan untuk membuat sebuah program untuk menghapus semua data yang tersimpan pada segmen shared memory saat hendak keluar dari program `system`. Untuk membuat program ini diperbaruilah function `main()` pada program `system` untuk dapat mengakomodasi program  4.L: Destruksi Shared Memory tersebut, dengan tampilan sebagai berikut:
+
+```c
+for (int i = 0; i < sys->num_hunters; i++) {
+	shmctl(sys->hunters[i].shm_key, IPC_RMID, NULL);
+}
+for (int i = 0; i < sys->num_dungeons; i++) {
+	shmctl(sys->dungeons[i].shm_key, IPC_RMID, NULL);
+}
+shmdt(sys);
+shmctl(shmid, IPC_RMID, NULL);
+```
+
 ## • REVISI
 
 ### • Soal 3
