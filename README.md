@@ -642,7 +642,7 @@ if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
 	exit(EXIT_FAILURE);
 }
 ```
-8. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program `system` yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
+8. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke admin.
 
 ```c
 if (sys->num_hunters < 0 || sys->num_hunters > MAX_HUNTERS) {
@@ -726,3 +726,184 @@ shmctl(shmid, IPC_RMID, NULL);
 exit(EXIT_SUCCESS);
 ```
 17. Jika admin memilih opsi keenam, maka do-while loop akan berhenti. Setelah itu, program dinyatakan berhasil dieksekusi dan keluar.
+
+### • Soal  4.B: Registrasi dan Login Hunter
+
+Pada subsoal 4.B: Registrasi dan Login Hunter, kita diperintahkan untuk membuat sebuah program untuk melakukan administrasi hunters yaitu proses registrasi dan login pada program `hunter`. Untuk membuat program ini dibuatlah tiga function bernama `regist_the_hunters()`, `login_registered_hunters()`, dan `login_menu_for_logged_in_hunters()`. Adapun penjelasan masing-masing fucntion adalah sebagai berikut:
+
+#### a. Soal 4.B.1: `regist_the_hunters()`
+
+Function `regist_the_hunters()` memiliki tugas utama yaitu melakukan proses pendaftaran atau registrasi untuk hunter baru . Adapun tampilan function `regist_the_hunters()` adalah sebagai berikut:
+
+```c
+void regist_the_hunters() {
+    key_t key;
+    int shmid;
+    
+    if ((key = get_system_key()) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory key\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach to shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    int numh = sys->num_hunters;
+    if (numh > MAX_HUNTERS - 1) {
+        fprintf(stdout, "Can't register. Hunter at full capacity\n");
+        shmdt(sys);
+        sleep(3);
+        return;
+    }
+    
+    
+    char username[50];
+    fprintf(stdout, "Username: ");
+    scanf("%49s", username);
+    
+    for (int i = 0; i < numh; i++) {
+        if (!strcmp(username, sys->hunters[i].username)) {
+            fprintf(stderr, "Error: Username '%s' is already taken\n", username);
+            shmdt(sys);
+            sleep(3);
+            exit(EXIT_FAILURE);
+        }
+    }
+    
+    struct Hunter *hunt = &sys->hunters[numh];
+    strncpy(hunt->username, username, sizeof(hunt->username));
+    hunt->level = 1; hunt->exp = 0; hunt->atk = 10; hunt->hp = 100; hunt->def = 5; hunt->banned = 0;
+
+    key_t hkey;
+    int hshmid;
+    struct Hunter *huntshm;
+    
+    if ((hkey = ftok("/tmp/hunter", numh)) == -1) {
+        fprintf(stderr, "Error: Fail to create hunter's key\n");
+        shmdt(sys);
+        exit(EXIT_FAILURE);
+    }
+    hunt->shm_key = hkey;
+    
+    if ((hshmid = shmget(hkey, sizeof(struct Hunter), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to create unique shared memory for each hunter\n");
+        shmdt(sys);
+        exit(EXIT_FAILURE);
+    }
+    
+    if ((huntshm = shmat(hshmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach hunter's shared memory\n");
+        shmdt(sys);
+        exit(EXIT_FAILURE);
+    }
+    
+    memcpy(huntshm, hunt, sizeof(struct Hunter));
+    
+    shmdt(huntshm);
+
+    sys->num_hunters++;
+
+    shmdt(sys);
+    fprintf(stdout, "Registration success!\n");
+    sleep(3);
+}
+```
+
+Dimana langkah implementasinya:
+
+```c
+void regist_the_hunters() {
+	...
+}
+```
+1. Mendeklarasikan function `regist_the_hunters()`.
+
+```c
+key_t key;
+int shmid;
+```
+2. Mendeklarasikan variabel, dimana:
+- `key`: untuk menyimpan data key utama yang digunakan untuk mengidentifikasi dan mengelola segmen shared memory mana yang akan digunakan bersama oleh program `hunter` dan `system`.
+- `shmid`: untuk menyimpan data mengenai ID segmen shared memory yang digunakan oleh program `hunter` dan `system` untuk mengakses data.
+
+```c
+if ((key = get_system_key()) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory key\n");
+        exit(EXIT_FAILURE);
+}
+```
+3. Mendapatkan value dari variabel key yang diambil dari function `get_system_key()` yang tertera pada header file. Apabila gagal untuk mendapatkan key-nya, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to get shared memory\n");
+        exit(EXIT_FAILURE);
+}
+```
+4. Function `shmget()` membuat segmen shared memory dengan key yang telah dibuat dan menyimpan data ID dari segmen shared memory tersebut ke dalam variabel `shmid`. Jika segmen shared memory dengan key tersebut belum ada, maka akan dibuat segmen shared memory yang baru menggunakan `IPC_CREAT` dengan izin read-write untuk semua user. Jika segmen sudah ada, maka function hanya perlu mengambil ID segmen shared memory yang sudah dibuat sebelumnya. Terakhir, apabila proses pembuatan segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach to shared memory\n");
+        exit(EXIT_FAILURE);
+}
+```
+5. Meng-attach segmen shared memory menggunakan function `shmat()` ke alamat memori yang dialokasikan ke program yang sedang berjalan sesuai dengan ID segmen shared memory yang telah diberikan. Apabila proses meng-attach segmen shared memory gagal, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+int numh = sys->num_hunters;
+```
+6. Mendeklarasikan variabel, dimana:
+- `numh`: untuk menyimpan data banyaknya individual hunter yang ada pada sistem yang diambil dari mengakses data `num_hunters` yang disimpan pada segmen shared memory yang dikelola oleh program `system`.
+
+```c
+if (numh > MAX_HUNTERS - 1) {
+	fprintf(stdout, "Can't register. Hunter at full capacity\n");
+	shmdt(sys);
+	sleep(3);
+	return;
+}
+```
+7. Memastikan bahwa banyak individual hunter saat hunter baru hendak mengregistrasi masih dibawah batas limit. Apabila banyaknya individual hunter sudah melebihi limit, maka program `regist_the_hunters()` akan selesai dan kembali ke UI menu utama pada function `main()` setelah meng-detach segmen shared memory dengan menggunakan function `shmdt()` dan memberikan jeda tiga detik agar user dapat membaca tampilan kendala batas limit.
+
+```c
+char username[50];
+```
+8. Mendeklarasikan variabel, dimana:
+- `username[50]`: untuk menyimpan data nama username hunter baru yang hendak registrasi dengan batas panjang 50 karakter.
+
+```c
+fprintf(stdout, "Username: ");
+scanf("%49s", username);
+```
+9. Memerintahkan user untuk menginput nama username yang dikehendakinya untuk diregistrasi dan disimpan ke dalam sistem.
+
+```c
+for (int i = 0; i < numh; i++) {
+	if (!strcmp(username, sys->hunters[i].username)) {
+	    fprintf(stderr, "Error: Username '%s' is already taken\n", username);
+	    shmdt(sys);
+	    sleep(3);
+	    exit(EXIT_FAILURE);
+	}
+}
+```
+10. Memastikan bahwa nama username yang dipilih saat registrasi belum pernah dipakai sebelumnya oleh hunter lain. Apabila username pernah dipakai, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user, meng-detach segmen shared memory dengan menggunakan function `shmdt()`, dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
+
+```c
+struct Hunter *hunt = &sys->hunters[numh];
+strncpy(hunt->username, username, sizeof(hunt->username));
+```
+11. Jika username belum pernah dipakai sebelumnya, maka program akan membuat struktur Hunter untuk hunter baru tersebut sesuai dengan urutan nomor hunter baru tersebut mendaftar dan menyimpan data usernamenya ke dalam struktur tersebut.
+
+```c
+hunt->level = 1; hunt->exp = 0; hunt->atk = 10; hunt->hp = 100; hunt->def = 5; hunt->banned = 0;
+```
+12. Menginisialisasi value status hunter baru ke value default yang telah ditentukan oleh sistem.
