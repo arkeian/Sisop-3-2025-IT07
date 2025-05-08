@@ -374,3 +374,206 @@ key_t get_system_key() {
 }
 ```
 11. Merupakan function untuk membuat kunci sistem yang digunakan dalam proses pertukaran data menggunakan shared memory.
+
+### • Soal  4.A: Pengantar `hunter.c` dan `system.c`
+
+Pada subsoal 4.A: Pengantar `hunter.c` dan `system.c`, kita diperintahkan untuk membuat dua program yang nantinya akan berinteraksi antara satu dengan yang lainnya, yaitu program `hunter.c` dan `system.c`. Dimana `system.c` merupakan program untuk mengelola dan menyimpan data mengenai hunter-hunter yang ada pada `hunter.c`. Adapun tampilan function `main()` untuk masing-masing program adalah sebagai berikut:
+
+#### a. Soal 4.A.1: `hunter.c`
+
+```c
+int main() {
+    FILE *huntfile = fopen("/tmp/hunter", "a");
+    if (huntfile == NULL) {
+        fprintf(stderr, "Error: Cannot create /tmp/dungeon\n");
+        exit(EXIT_FAILURE);
+    }
+    fclose(huntfile);
+
+    int opt;
+    do {
+        fprintf(stdout, "\e[H\e[2J\e[3J");
+        fprintf(stdout, "=== HUNTER MENU ===\n1. Register\n2. Login\n3. Exit\nChoice: ");
+        
+        if (scanf("%d", &opt) != 1) {
+            opt = -1;
+            while (getchar() != '\n');
+        }
+        switch (opt) {
+        case 1:
+            regist_the_hunters();
+            break;
+        case 2:
+            login_registered_hunters();
+            break;
+        case 3:
+            break;
+        default:
+            fprintf(stderr, "Error: Unknown Option\n");
+            sleep(3);
+        }
+    } while (opt != 3);
+    exit(EXIT_SUCCESS);
+}
+```
+
+Dimana langkah implementasinya:
+
+```c
+int main() {
+	...
+}
+```
+1. Merupakan deklarasi function `main()`.
+
+```c
+FILE *huntfile = fopen("/tmp/hunter", "a");
+if (huntfile == NULL) {
+    fprintf(stderr, "Error: Cannot create /tmp/dungeon\n");
+    exit(EXIT_FAILURE);
+}
+```
+2. Membuat file `/tmp/hunter` jika tidak ada yang digunakan dalam proses membuat key dengan konversi pathname ke dalam sebuah key yang digunakan untuk mengakses shared memory yang khusus untuk setiap hunter menggunakan function `ftok()`. Apabila tidak ditemukan atau tidak dapat membuka `/tmp/hunter`, maka program akan keluar setelah melempar sebuah error ke stderr yang akan ditampilkan ke user.
+
+```c
+fclose(huntfile);
+```
+3. Menutup kembali file `/tmp/hunter`.
+
+```c
+int opt;
+```
+4. Mendeklarasikan variabel, dimana:
+- `opt`: untuk menyimpan data opsi yang dipilih oleh user saat menjalankan program `hunter`.
+
+```c
+do {
+    ...    
+} while (opt != 3);
+```
+4. Merupakan suatu do-while loop untuk menampilkan UI pada layar terminal kepada user selama user tidak memilih opsi ketiga yang mengeluarkan user dari program.
+
+```c
+fprintf(stdout, "\e[H\e[2J\e[3J");
+```
+5. Membersihkan layar terminal. Memiliki peran yang sama layaknya command `clear`.
+
+```c
+fprintf(stdout, "=== HUNTER MENU ===\n1. Register\n2. Login\n3. Exit\nChoice: ");
+```
+6. Mengoutput UI ke layar terminal yang menampilkan pilihan opsi yang dapat diplih oleh user.
+
+```c
+if (scanf("%d", &opt) != 1) {
+    opt = -1;
+    while (getchar() != '\n');
+}
+```
+7. Mencoba untuk mendapatkan input dari user dalam bentuk integer. Apabila user menginput suatu karakter yang bukan merupakan suatu integer, maka opsi akan diinsialisasi dengan `-1` dan membersihkan buffer input dari karakter yang tidak sesuai tersebut.
+
+```c
+switch (opt) {
+case 1:
+    regist_the_hunters();
+    break;
+case 2:
+    login_registered_hunters();
+    break;
+case 3:
+    break;
+default:
+    fprintf(stderr, "Error: Unknown Option\n");
+    sleep(3);
+}
+```
+8. Mengarahkan program ke function yang sesuai berdasarkan pada input yang diberikan oleh user pada variabel `opt`. Jika value di dalam `opt` merupakan value yang bukan antara 1, 2, dan 3, maka program akan melempar sebuah error ke stderr yang akan ditampilkan ke user dan memberikan jeda tiga detik agar user dapat membaca error tersebut.
+
+```c
+exit(EXIT_SUCCESS);
+```
+9. Setelah user memilih opsi ketiga, maka program dinyatakan berhasil dieksekusi dan keluar.
+
+#### b. Soal 4.A.2: `system.c`
+
+```c
+int main() {
+    srand(time(NULL));
+
+    FILE *dngnfile = fopen("/tmp/dungeon", "a");
+    if (dngnfile == NULL) {
+        fprintf(stderr, "Error: Cannot create /tmp/dungeon\n");
+        exit(EXIT_FAILURE);
+    }
+    fclose(dngnfile);
+
+    key_t key;
+    int shmid;
+    
+    if ((key = get_system_key()) == -1) {
+        fprintf(stderr, "Error: Fail to create shared memory key\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((shmid = shmget(key, sizeof(struct SystemData), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to create shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if ((sys = shmat(shmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach system data to shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (sys->num_hunters < 0 || sys->num_hunters > MAX_HUNTERS) {
+        sys->num_hunters = 0;
+        sys->num_dungeons = 0;
+        sys->current_notification_index = 0;
+    }
+
+    int opt;
+    do {
+        fprintf(stdout, "\e[H\e[2J\e[3J");
+        fprintf(stdout, "=== SYSTEM MENU ===\n1. Hunter Info\n2. Dungeon Info\n3. Generate Dungeon\n4. Ban/Unban Hunter\n5. Reset Hunter\n6. Exit\nChoice: ");
+    
+        if (scanf("%d", &opt) != 1) {
+            opt = -1;
+            while (getchar() != '\n');
+        }
+        switch (opt) {
+        case 1:
+            info_of_all_hunters();
+            break;
+        case 2:
+            info_of_all_dungeons();
+            break;
+        case 3:
+            generate_random_dungeons();
+            break;
+        case 4:
+            ban_hunter_because_hunter_bad();
+            break;
+        case 5:
+            reset_the_hunters_stat_back_to_default();
+            break;
+        case 6:
+            break;
+        default:
+            fprintf(stderr, "Error: Unknown Option\n");
+            sleep(3);
+        }
+    } while (opt != 6);
+    
+    
+    for (int i = 0; i < sys->num_hunters; i++) {
+        shmctl(sys->hunters[i].shm_key, IPC_RMID, NULL);
+    }
+    for (int i = 0; i < sys->num_dungeons; i++) {
+        shmctl(sys->dungeons[i].shm_key, IPC_RMID, NULL);
+    }
+    shmdt(sys);
+    shmctl(shmid, IPC_RMID, NULL);
+    exit(EXIT_SUCCESS);
+}
+```
+
+Dimana langkah implementasinya:
