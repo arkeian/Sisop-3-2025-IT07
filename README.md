@@ -1389,3 +1389,78 @@ while (getchar()!='\n');
 getchar();
 ```
 5. Merupakan suatu fitur untuk menunggu user menekan Enter key agar program `system` kembali ke halaman awal. Digunakan agar user dapat membaca tampilan informasi hunter tanpa perlu mempertimbangkan constraint waktu yang diterapkan oleh function `sleep()`.
+
+### • Soal  4.D: Generasi Dungeon
+
+Pada subsoal 4.D: Generasi Dungeon, kita diperintahkan untuk membuat sebuah program pada `system` untuk meng-generate suatu dungeon yang memiliki nama tersendiri, value status random di antara rentang tertentu, dan level minimum yang diperlukan oleh hunters untuk menaklukkan dungeon tersebut. Untuk membuat program ini dibuatlah suatu function bernama `generate_random_dungeons()`, dengan tampilan sebagai berikut:
+
+```c
+void generate_random_dungeons() {
+    int numd = sys->num_dungeons;
+    if (numd > MAX_DUNGEONS - 1) {
+        fprintf(stderr, "Can't generate. Dungeons at full capacity\n");
+        sleep(3);
+        return;
+    }
+
+
+    struct Dungeon *dngn = &sys->dungeons[numd];
+
+    char *possinames[] = {
+        "Double Dungeon",
+        "Demon Castle",
+        "Pyramid Dungeon",
+        "Red Gate Dungeon",
+        "Hunters Guild Dungeon",
+        "Busan A-Rank Dungeon",
+        "Insects Dungeon",
+        "Goblins Dungeon",
+        "D-Rank Dungeon",
+        "Gwanak Mountain Dungeon",
+        "Hapjeong Subway Station Dungeon"
+    };
+    size_t possicounts = sizeof(possinames)/sizeof(possinames[0]);
+    int randdngnid = rand() % possicounts;
+    snprintf(dngn->name, sizeof(dngn->name), "%s", possinames[randdngnid]);
+    dngn->min_level = rand() % 5 + 1; dngn->atk = rand() % 51 + 100; dngn->hp = rand() % 51 + 50; dngn->def = rand() %26 + 25; dngn->exp = rand() % 151 + 150;
+
+    key_t dkey;
+    int dshmid;
+    struct Dungeon *dngnshm;
+
+    if ((dkey = ftok("/tmp/dungeon", numd)) == -1) {
+        fprintf(stderr, "Error: Fail to create dungeon's key\n");
+        exit(EXIT_FAILURE);
+    }
+    dngn->shm_key = dkey;
+    
+    if ((dshmid = shmget(dkey, sizeof(struct Dungeon), 0666 | IPC_CREAT)) == -1) {
+        fprintf(stderr, "Error: Fail to create unique shared memory for each dungeon\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    if ((dngnshm = shmat(dshmid, NULL, 0)) == (void *)-1) {
+        fprintf(stderr, "Error: Fail to attach dungeon's shared memory\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    memcpy(dngnshm, dngn, sizeof(struct Dungeon));
+    
+    shmdt(dngnshm);
+
+    sys->num_dungeons++;
+
+    fprintf(stdout, "Dungeon generated!\n");
+    fprintf(stdout, "Name: %-49s\nMinimum Level: %-3d\nEXP Reward: %-3d\nATK: %-3d\nHP: %-3d\nDEF: %-3d\n",
+            dngn->name,
+            dngn->min_level,
+            dngn->exp,
+            dngn->atk,
+            dngn->hp,
+            dngn->def);
+
+    fprintf(stdout, "\nPress Enter key to return to menu");
+    while (getchar()!='\n');
+    getchar();
+}
+```
