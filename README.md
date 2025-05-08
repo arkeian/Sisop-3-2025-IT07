@@ -8,6 +8,257 @@
 | Mochkamad Maulana Syafaat	| 5027241021 	|
 
 ## • Soal  1
+### “The Legend of Rootkids” 
+Soal ini kita ditugaskan untuk membuat sistem RPC server-client untuk membantu memproses file teks tersebut menjadi gambar JPEG sesuai dengan instruksi yang diberikan. Sistem ini akan melibatkan dua bagian:
+1. Server yang menerima permintaan dari client untuk mengubah teks menjadi gambar, serta mengirimkan gambar yang telah diproses.
+2. Client yang mengirimkan perintah untuk mendekripsi teks dan mendownload gambar yang telah dihasilkan.
+### Server (image_server.c)
+Server ini akan berjalan sebagai daemon yang mendengarkan permintaan dari client melalui socket, mengelola dekripsi file teks menjadi gambar JPEG, dan mengirimkan gambar jika diminta.
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <time.h>
+
+// Fungsi untuk membalik string
+void reverse(char *str) {
+    int len = strlen(str);
+    for (int i = 0; i < len / 2; ++i) {
+        char tmp = str[i];
+        str[i] = str[len - i - 1];
+        str[len - i - 1] = tmp;
+    }
+}
+
+// Fungsi untuk mengubah hex menjadi byte
+void hex_to_bin(const char *hex, unsigned char *out, size_t *out_len) {
+    size_t len = strlen(hex);
+    *out_len = 0;
+    for (size_t i = 0; i < len; i += 2) {
+        sscanf(hex + i, "%2hhx", &out[*out_len]);
+        (*out_len)++;
+    }
+}
+
+// Fungsi untuk menangani permintaan upload
+void handle_upload(int client_socket) {
+    char buffer[1024];
+    int bytes_received;
+    FILE *output_file;
+    
+    // Terima nama file
+    bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
+    buffer[bytes_received] = '\0';
+    
+    // Terima data file
+    bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
+    buffer[bytes_received] = '\0';
+    
+    // Reverse string
+    reverse(buffer);
+    
+    // Decode Hex to binary
+    unsigned char decoded_data[1024];
+    size_t decoded_len;
+    hex_to_bin(buffer, decoded_data, &decoded_len);
+    
+    // Simpan gambar dengan timestamp sebagai nama file
+    time_t t;
+    struct tm *tm_info;
+    char filename[64];
+    time(&t);
+    tm_info = localtime(&t);
+    strftime(filename, sizeof(filename), "%s.jpeg", tm_info);
+    
+    output_file = fopen(filename, "wb");
+    fwrite(decoded_data, 1, decoded_len, output_file);
+    fclose(output_file);
+    
+    // Kirim konfirmasi kepada client
+    send(client_socket, "File uploaded successfully", 26, 0);
+}
+
+// Fungsi untuk menangani permintaan download
+void handle_download(int client_socket) {
+    char filename[64];
+    FILE *input_file;
+    size_t file_size;
+    char *file_buffer;
+    
+    // Terima nama file
+    recv(client_socket, filename, sizeof(filename), 0);
+    
+    input_file = fopen(filename, "rb");
+    if (input_file == NULL) {
+        send(client_socket, "File not found", 15, 0);
+        return;
+    }
+    
+    // Tentukan ukuran file
+    fseek(input_file, 0, SEEK_END);
+    file_size = ftell(input_file);
+    rewind(input_file);
+    
+    // Kirim file ke client
+    file_buffer = (char *)malloc(file_size);
+    fread(file_buffer, 1, file_size, input_file);
+    send(client_socket, file_buffer, file_size, 0);
+    
+    free(file_buffer);
+    fclose(input_file);
+}
+
+// Main server
+int main() {
+    int server_socket, client_socket;
+    struct sockaddr_in server_addr, client_addr;
+    socklen_t client_addr_len = sizeof(client_addr);
+    
+    // Membuat socket
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket < 0) {
+        perror("Socket failed");
+        exit(1);
+    }
+    
+    // Menyiapkan alamat server
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = INADDR_ANY;
+    server_addr.sin_port = htons(12345);
+    
+    // Bind socket
+    if (bind(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Bind failed");
+        exit(1);
+    }
+    
+    // Listen
+    if (listen(server_socket, 5) < 0) {
+        perror("Listen failed");
+        exit(1);
+    }
+    
+    printf("Server listening on port 12345...\n");
+    
+    // Menunggu client untuk connect
+    while (1) {
+        client_socket = accept(server_socket, (struct sockaddr *)&client_addr, &client_addr_len);
+        if (client_socket < 0) {
+            perror("Accept failed");
+            continue;
+        }
+        
+        char command[64];
+        recv(client_socket, command, sizeof(command), 0);
+        
+        if (strcmp(command, "upload") == 0) {
+            handle_upload(client_socket);
+        } else if (strcmp(command, "download") == 0) {
+            handle_download(client_socket);
+        }
+        
+        close(client_socket);
+    }
+    
+    close(server_socket);
+    return 0;
+}
+```
+### Client (image_server.c)
+Client ini akan mengirimkan file teks untuk didekripsi oleh server, serta meminta gambar yang telah didekripsi dari server.
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+
+// Fungsi untuk mengirim file ke server
+void upload_file(int server_socket, const char *filename) {
+    FILE *file = fopen(filename, "r");
+    char buffer[1024];
+    int bytes_read;
+    
+    if (file == NULL) {
+        perror("Failed to open file");
+        return;
+    }
+    
+    // Kirim perintah upload
+    send(server_socket, "upload", 6, 0);
+    
+    // Kirim nama file
+    send(server_socket, filename, strlen(filename), 0);
+    
+    // Kirim data file
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        send(server_socket, buffer, bytes_read, 0);
+    }
+    
+    fclose(file);
+    
+    // Terima konfirmasi dari server
+    recv(server_socket, buffer, sizeof(buffer), 0);
+    printf("%s\n", buffer);
+}
+
+// Fungsi untuk mengunduh file dari server
+void download_file(int server_socket, const char *filename) {
+    FILE *file = fopen(filename, "wb");
+    char buffer[1024];
+    int bytes_received;
+    
+    // Kirim perintah download
+    send(server_socket, "download", 8, 0);
+    
+    // Kirim nama file
+    send(server_socket, filename, strlen(filename), 0);
+    
+    // Terima file dari server
+    while ((bytes_received = recv(server_socket, buffer, sizeof(buffer), 0)) > 0) {
+        fwrite(buffer, 1, bytes_received, file);
+    }
+    
+    fclose(file);
+    printf("File downloaded successfully: %s\n", filename);
+}
+
+int main() {
+    int server_socket;
+    struct sockaddr_in server_addr;
+    
+    // Membuat socket
+    server_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_socket < 0) {
+        perror("Socket failed");
+        exit(1);
+    }
+    
+    // Menyiapkan alamat server
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = inet_addr("127.0.0.1"); // Alamat IP server
+    server_addr.sin_port = htons(12345);
+    
+    // Connect ke server
+    if (connect(server_socket, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Connect failed");
+        exit(1);
+    }
+    
+    // Upload file
+    upload_file(server_socket, "secrets/input_1.txt");
+    
+    // Download file
+    download_file(server_socket, "1744403652.jpeg");
+    
+    close(server_socket);
+    return 0;
+}
+```
 
 ## • Soal 2
 ### • Pendahuluan
