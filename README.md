@@ -7,6 +7,8 @@
 | Zaenal Mustofa		| 5027241018 	|
 | Mochkamad Maulana Syafaat	| 5027241021 	|
 
+---
+
 ## • Soal  1
 ### “The Legend of Rootkids” 
 Soal ini kita ditugaskan untuk membuat sistem RPC server-client untuk membantu memproses file teks tersebut menjadi gambar JPEG sesuai dengan instruksi yang diberikan. Sistem ini akan melibatkan dua bagian:
@@ -260,6 +262,8 @@ int main() {
 }
 ```
 
+---
+
 ## • Soal 2
 ### • Pendahuluan
 Tahun 2025, di tengah era perdagangan serba cepat, berdirilah sebuah perusahaan ekspedisi baru bernama RushGo. RushGo ingin memberikan layanan ekspedisi terbaik dengan 2 pilihan, Express (super cepat) dan Reguler (standar). Namun, pesanan yang masuk sangat banyak! Mereka butuh sebuah sistem otomatisasi pengiriman, agar agen-agen mereka tidak kewalahan menangani pesanan yang terus berdatangan. Kamu ditantang untuk membangun Delivery Management System untuk RushGo. 
@@ -488,6 +492,9 @@ int main(int argc, char *argv[]) {
 }
 
 ```
+
+---
+
 ### delivery_agent
 Program ini bertugas melakukan pengiriman otomatis untuk pesanan bertipe Express menggunakan multi-threading. Program ini juga dapat membaca file.csv dan menyimpannya ke shared memory. Berikut ini penjelasan kode nya :
 ```c
@@ -667,11 +674,16 @@ Jika perintah yang diberikan adalah `-list`, program akan menampilkan seluruh pe
     }
 ```
 Jika perintah yang diberikan tidak sesuai dengan yang dikenali (misalnya bukan `-deliver`, `-status`, atau `-list`), maka program akan menampilkan pesan bahwa perintah tidak valid.
+
+---
+
 ## • Soal  3
 
 # The Lost Dungeon - Sistem Adventure Berbasis RPC
 
 Sebuah dungeon adventure multiplayer dengan fitur eksplorasi, battle, dan manajemen inventory menggunakan arsitektur **RPC server-client**.
+
+---
 
 ## 🏗️ Struktur Program
 
@@ -680,6 +692,7 @@ soal_3/
 ├── player.c # Client pemain
 └── shop.c # Sistem toko senjata
 
+---
 
 ## 🖥️ Komponen Utama
 
@@ -691,6 +704,8 @@ soal_3/
   - Mengelola state dungeon dan battle
   - Menyimpan data senjata dari `shop.c`
 
+---
+
 ### **Client (`player.c`)**
 - Terhubung ke server via **socket RPC**
 - Menu interaktif dengan fitur:
@@ -699,6 +714,8 @@ soal_3/
   - 🛒 Toko senjata
   - 🎒 Inventory management
   - 📊 Status player
+
+---
 
 ## ⚙️ Fitur Wajib
 
@@ -709,6 +726,8 @@ soal_3/
 | Spesifikasi           | - Harga<br>- Damage value<br>- Minimal 2 senjata dengan passive effect |
 | Contoh Passive        | Critical chance +15%, Lifesteal 10% HP                               |
 | Inventory System      | Penyimpanan senjata yang dibeli                                      |
+
+---
 
 ### ⚔️ Battle System
 Musuh random: HP (50-200), rewards (gold/EXP random).
@@ -1109,9 +1128,13 @@ int main() {
 
 ```
 
+---
+
 ### KENDALA
 
 sulit untuk mengkoneksikan file jika tidak menggunakan makefile .h
+
+---
 
 ## • Soal  4: Hunters System
 
@@ -1256,9 +1279,13 @@ key_t get_system_key() {
 ```
 11. Merupakan function untuk membuat key sistem yang digunakan dalam proses mengakses data menggunakan mekanisme shared memory.
 
+---
+
 ### • Soal  4.A: Pengantar `hunter.c` dan `system.c`
 
 Pada subsoal 4.A: Pengantar `hunter.c` dan `system.c`, kita diperintahkan untuk membuat dua program yang nantinya akan berinteraksi antara satu dengan yang lainnya, yaitu program `hunter.c` dan `system.c`. Dimana `system.c` merupakan program untuk mengelola dan menyimpan data mengenai hunter-hunter yang ada pada `hunter.c`. Adapun tampilan function `main()` untuk masing-masing program adalah sebagai berikut:
+
+---
 
 #### a. Soal 4.A.1: `hunter.c`
 
@@ -1373,6 +1400,8 @@ default:
 exit(EXIT_SUCCESS);
 ```
 9. Jika user memilih opsi ketiga, maka do-while loop akan berhenti. Setelah itu, program dinyatakan berhasil dieksekusi dan keluar.
+
+---
 
 #### b. Soal 4.A.2: `system.c`
 
@@ -1611,6 +1640,8 @@ exit(EXIT_SUCCESS);
 ### • Soal  4.B: Registrasi dan Login Hunter
 
 Pada subsoal 4.B: Registrasi dan Login Hunter, kita diperintahkan untuk membuat sebuah program untuk melakukan administrasi hunters yaitu proses registrasi dan login pada program `hunter`. Untuk membuat program ini dibuatlah tiga function bernama `regist_the_hunters()`, `login_registered_hunters()`, dan `login_menu_for_logged_in_hunters()`. Adapun penjelasan masing-masing fucntion adalah sebagai berikut:
+
+---
 
 #### a. Soal 4.B.1: `regist_the_hunters()`
 
@@ -1857,6 +1888,8 @@ sleep(3);
 ```
 22. Mengoutput suatu pesan ke user bahwa program registrasi berhasil berjalan dan user telah diregistrasi atau didaftarkan ke dalam sistem. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
 
+---
+
 #### b. Soal 4.B.2: `login_registered_hunters()`
 
 Function `login_registered_hunters()` memiliki tugas utama yaitu melakukan proses login untuk hunter lama, khususnya melakukan proses verifikasi apakah user terdaftar di dalam sistem. Adapun tampilan function `login_registered_hunters()` adalah sebagai berikut:
@@ -2034,6 +2067,8 @@ return;
 ```
 15. Setelah function `login_menu_for_logged_in_hunters()` dijalankan dan user hendak kembali ke halaman awal, maka sebelumnya program akan meng-detach segmen shared memory utama dan segmen shared memory khusus untuk hunter lama yang hendak login dengan menggunakan function `shmdt()`.
 
+---
+
 #### c. Soal 4.B.3: `login_menu_for_logged_in_hunters()`
 
 Function `login_menu_for_logged_in_hunters()` memiliki tugas utama yaitu melanjutkan proses login untuk hunter lama yang sudah terverifikasi oleh sistem melalui function `login_registered_hunters()` dan terbukti telah terdaftar sebelumnya. Adapun tampilan function `login_menu_for_logged_in_hunters()` adalah sebagai berikut:
@@ -2180,6 +2215,8 @@ return;
 ```
 9. Jika user memilih opsi kelima, maka do-while loop akan berhenti. Setelah itu, function yang tertera pada function `login_menu_for_logged_in_hunters()` dinyatakan berhasil dieksekusi dan user diarahkan kembali ke halaman awal.
 
+---
+
 ### • Soal  4.C: Informasi Hunter
 
 Pada subsoal 4.C: Informasi Hunter, kita diperintahkan untuk membuat sebuah program untuk melihat daftar user yang teregistrasi dan tersimpan pada program `system`. Untuk membuat program ini dibuatlah suatu function bernama `info_of_all_hunters()`, dengan tampilan sebagai berikut:
@@ -2263,6 +2300,8 @@ getchar();
 ```
 5. Merupakan suatu fitur untuk menunggu user menekan Enter key agar program `system` kembali ke halaman awal. Digunakan agar user dapat membaca tampilan informasi hunter tanpa perlu mempertimbangkan constraint waktu yang diterapkan oleh function `sleep()`.
 
+---
+
 ### • Soal  4.D: Generasi Dungeon
 
 Pada subsoal 4.D: Generasi Dungeon, kita diperintahkan untuk membuat sebuah program pada `system` untuk meng-generate suatu dungeon yang memiliki nama tersendiri, value status random di antara rentang tertentu, dan level minimum yang diperlukan oleh hunters untuk menaklukkan dungeon tersebut. Untuk membuat program ini dibuatlah suatu function bernama `generate_random_dungeons()`, dengan tampilan sebagai berikut:
@@ -2337,6 +2376,8 @@ void generate_random_dungeons() {
     getchar();
 }
 ```
+
+---
 
 ### • Soal  4.E: Informasi Dungeon
 
@@ -2459,6 +2500,8 @@ void show_available_dungeons_based_on_hunters_level(int huntlvl) {
 }
 ```
 
+---
+
 ### • Soal  4.G: Dungeon Raid
 
 Pada subsoal 4.G: Dungeon Raid, kita diperintahkan untuk membuat sebuah program untuk melakukan raid dengan memilih sebuah dungeon dari daftar dungeon yang memiliki level sesuai dengan level hunter. Untuk membuat program ini dibuatlah suatu function bernama `conquer_raidable_dungeons_based_on_hunters_level()`, dengan tampilan sebagai berikut:
@@ -2551,6 +2594,8 @@ void conquer_raidable_dungeons_based_on_hunters_level(struct Hunter *huntshm, in
     }
 }
 ```
+
+---
 
 ### • Soal  4.H: Hunters Waging War
 
@@ -2691,6 +2736,8 @@ int battle_other_hunters_based_on_stats(struct Hunter *huntshm, int huntid) {
 }
 ```
 
+---
+
 ### • Soal  4.I: Hunters Gatekeeping
 
 Pada subsoal 4.I: Hunters Gatekeeping, kita diperintahkan untuk membuat sebuah program untuk dapat melakukan pemblokiran ataupun mengangkat blokir tersebut terhadap suatu hunter. Untuk membuat program ini dibuatlah suatu function bernama `ban_hunter_because_hunter_bad()`, dengan tampilan sebagai berikut:
@@ -2759,6 +2806,8 @@ void ban_hunter_because_hunter_bad() {
 }
 ```
 
+---
+
 ### • Soal  4.J: Reset Hunters
 
 Pada subsoal 4.J: Reset Hunters, kita diperintahkan untuk membuat sebuah program untuk dapat melakukan reset status suatu hunter ke value default yang telah ditentukan oleh program. Untuk membuat program ini dibuatlah suatu function bernama `reset_the_hunters_stat_back_to_default()`, dengan tampilan sebagai berikut:
@@ -2811,6 +2860,8 @@ void reset_the_hunters_stat_back_to_default() {
     }
 }
 ```
+
+---
 
 ### • Soal  4.K: Tututitutut Toggle
 
@@ -2881,6 +2932,8 @@ sleep(3);
 ```
 2. Mengoutput suatu pesan ke user bahwa program toggle notifikasi berhasil berjalan dan status pengaturan sistem kendali notifikasi user telah diubah. Selain itu, user diberikan jeda tiga detik agar user tersebut dapat membaca output-nya.
 
+---
+
 ### • Soal  4.L: Destruksi Shared Memory
 
 Pada subsoal 4.L: Destruksi Shared Memory, kita diperintahkan untuk membuat sebuah program untuk menghapus semua data yang tersimpan pada segmen shared memory saat hendak keluar dari program `system`. Untuk membuat program ini diperbaruilah function `main()` pada program `system` untuk dapat mengakomodasi program  4.L: Destruksi Shared Memory tersebut, dengan tampilan sebagai berikut:
@@ -2922,6 +2975,8 @@ shmctl(shmid, IPC_RMID, NULL);
 ```
 4. Memerintahkan program untuk melakukan proses destruksi segmen shared memory utama.
 
+---
+
 ### • Soal 4: Kendala yang Dialami
 
 <p align="center">
@@ -2931,6 +2986,8 @@ shmctl(shmid, IPC_RMID, NULL);
 > (1) Screenshot potret tampilan program `system` dan `hunter` saat dijalankan dan terjadi logic error.
 
 Pada kasus ini dapat terlihat bahwa meskipun hanya terdapat satu user yang terdaftar pada sistem saat program mengeksekusi function `battle_other_hunters_based_on_stats()` dan menginput username yang menjadi target dimana tidak ada target dengan username tersebut, program akan memilih satu-satunya username yang terdaftar pada sistem, alias user yang sedang login pada program `hunter` sebagai target. Alhasil, terjadilah proses self-annihilation dimana program akan menyatakan bahwa user kalah terhadap dirinya sendiri dan program akan keluar secara tiba-tiba setelah itu karena gagal mengambil data user karena user sudah dihapus oleh sistem.
+
+---
 
 ### • Soal 4: Dokumentasi Lain yang Tidak Berkaitan dengan Kendala
 
@@ -2945,6 +3002,8 @@ Pada kasus ini dapat terlihat bahwa meskipun hanya terdapat satu user yang terda
 <p align="center">
 	<img src="https://github.com/user-attachments/assets/b96d29fb-a5ad-4155-9c40-d53bc18a0cd5" alt="Thinking back, maybe I should've focused more on actually writing the documentation." width="640" height="360">  
 </p>
+
+---
 
 ## • REVISI
 
@@ -3334,6 +3393,8 @@ const char* buy_weapon(int player_id, int weapon_id) {
 ![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161629.png)
 ![alt text](https://github.com/jagosyafaat30/dokumetnsasi/blob/main/sisop3/Screenshot%202025-05-08%20161644.png)
 
+---
+
 ### • Soal 4
 
 Pada soal 4 terdapat revisi di mana sistem notifikasi pada awalnya masih bersifat statis dan belum bisa memperbarui dirinya sendiri setiap tiga detik. Adapun bagian program `hunter` yang mengalami perubahan agar masalah tersebut dapat diselesaikan adalah sebagai berikut:
@@ -3412,6 +3473,8 @@ void *tututitutut_toggle(void *arg) {
     return NULL;
 }
 ```
+
+---
 
 #### • Kendala yang masih dialami
 
