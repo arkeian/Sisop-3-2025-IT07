@@ -2804,6 +2804,30 @@ shmdt(sys);
 shmctl(shmid, IPC_RMID, NULL);
 ```
 
+### • Soal 4: Kendala yang Dialami
+
+<p align="center">
+	<img src="https://github.com/user-attachments/assets/f3bd0b51-6376-4074-8d76-ac3388eadc22" alt="It sure does feel lonely in these area." width="640" height="360">  
+</p>
+
+> (1) Screenshot potret tampilan program `system` dan `hunter` saat dijalankan dan terjadi logic error.
+
+Pada kasus ini dapat terlihat bahwa meskipun hanya terdapat satu user yang terdaftar pada sistem saat program mengeksekusi function `battle_other_hunters_based_on_stats()` dan menginput username yang menjadi target dimana tidak ada target dengan username tersebut, program akan memilih satu-satunya username yang terdaftar pada sistem, alias user yang sedang login pada program `hunter` sebagai target. Alhasil, terjadilah proses self-annihilation dimana program akan menyatakan bahwa user kalah terhadap dirinya sendiri dan program akan keluar secara tiba-tiba setelah itu karena gagal mengambil data user karena user sudah dihapus oleh sistem.
+
+### • Soal 4: Dokumentasi Lain yang Tidak Berkaitan dengan Kendala
+
+<p align="center">
+	<img src="https://github.com/user-attachments/assets/9a4373aa-50d8-49be-9bd7-233178e64a84" alt="Does anybody actually has the time to read these?" width="640" height="360">  
+</p>
+
+<p align="center">
+	<img src="https://github.com/user-attachments/assets/046e0c26-dfa9-495b-94f9-8f0412cfd398" alt="I do believe that one day someone will see this. Or maybe not? Who knows." width="640" height="360">  
+</p>
+
+<p align="center">
+	<img src="https://github.com/user-attachments/assets/b96d29fb-a5ad-4155-9c40-d53bc18a0cd5" alt="Thinking back, maybe I should've focused more on actually writing the documentation." width="640" height="360">  
+</p>
+
 ## • REVISI
 
 ### • Soal 3
